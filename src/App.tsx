@@ -6,6 +6,7 @@ import OptionsChain from './pages/OptionsChain';
 import Portfolio from './pages/Portfolio';
 import StrategyBuilder from './pages/StrategyBuilder';
 import Watchlist from './pages/Watchlist';
+import Scanner from './pages/Scanner';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/strategy-builder" element={<StrategyBuilder />} />
           <Route path="/watchlist" element={<Watchlist />} />
+          <Route path="/scanner" element={<Scanner />} />
         </Route>
       </Routes>
     </Router>
