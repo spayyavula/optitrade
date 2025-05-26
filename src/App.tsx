@@ -11,8 +11,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Dashboard />} />
           <Route path="/options-chain" element={<OptionsChain />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/strategy-builder" element={<StrategyBuilder />} />
