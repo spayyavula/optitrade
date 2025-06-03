@@ -44,9 +44,11 @@ export interface Position {
 export interface Strategy {
   id: string;
   name: string;
+  description?: string;
+  regime?: 'bullish' | 'bearish' | 'neutral';
   legs: StrategyLeg[];
-  maxProfit?: number;
-  maxLoss?: number;
+  maxProfit?: number | string;
+  maxLoss?: number | string;
   breakEven?: number[];
 }
 

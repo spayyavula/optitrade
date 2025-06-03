@@ -145,9 +145,12 @@ export const mockPositions: Position[] = [
 
 // Mock Strategies
 export const mockStrategies: Strategy[] = [
+  // Bullish Strategies
   {
-    id: '1',
-    name: 'AAPL Bull Call Spread',
+    id: 'bull-call-spread',
+    name: 'Bull Call Spread',
+    description: 'A bullish strategy that profits from moderate price increases while limiting risk.',
+    regime: 'bullish',
     legs: [
       {
         id: '1a',
@@ -173,41 +176,192 @@ export const mockStrategies: Strategy[] = [
     breakEven: [178.85]
   },
   {
-    id: '2',
-    name: 'MSFT Iron Condor',
+    id: 'risk-reversal',
+    name: 'Risk Reversal',
+    description: 'A strongly bullish strategy that combines a short put with a long call.',
+    regime: 'bullish',
     legs: [
       {
         id: '2a',
         type: 'call',
-        strike: 420,
-        expiration: expirationDates[1],
+        strike: 180,
+        expiration: expirationDates[2],
+        action: 'buy',
+        quantity: 1,
+        price: 4.20
+      },
+      {
+        id: '2b',
+        type: 'put',
+        strike: 170,
+        expiration: expirationDates[2],
+        action: 'sell',
+        quantity: 1,
+        price: 2.50
+      }
+    ],
+    maxProfit: 'Unlimited',
+    maxLoss: 'Substantial',
+    breakEven: [181.70]
+  },
+  {
+    id: 'call-backspread',
+    name: 'Call Ratio Backspread',
+    description: 'A bullish strategy that profits from significant upward moves.',
+    regime: 'bullish',
+    legs: [
+      {
+        id: '3a',
+        type: 'call',
+        strike: 175,
+        expiration: expirationDates[2],
+        action: 'sell',
+        quantity: 1,
+        price: 5.10
+      },
+      {
+        id: '3b',
+        type: 'call',
+        strike: 180,
+        expiration: expirationDates[2],
+        action: 'buy',
+        quantity: 2,
+        price: 3.30
+      }
+    ],
+    maxProfit: 'Unlimited',
+    maxLoss: 'Limited',
+    breakEven: [183.50, 191.50]
+  },
+  
+  // Bearish Strategies
+  {
+    id: 'bear-put-spread',
+    name: 'Bear Put Spread',
+    description: 'A bearish strategy that profits from moderate price decreases while limiting risk.',
+    regime: 'bearish',
+    legs: [
+      {
+        id: '4a',
+        type: 'put',
+        strike: 180,
+        expiration: expirationDates[2],
+        action: 'buy',
+        quantity: 1,
+        price: 4.80
+      },
+      {
+        id: '4b',
+        type: 'put',
+        strike: 170,
+        expiration: expirationDates[2],
+        action: 'sell',
+        quantity: 1,
+        price: 2.30
+      }
+    ],
+    maxProfit: 750,
+    maxLoss: 250,
+    breakEven: [177.50]
+  },
+  {
+    id: 'put-backspread',
+    name: 'Put Ratio Backspread',
+    description: 'A bearish strategy that profits from significant downward moves.',
+    regime: 'bearish',
+    legs: [
+      {
+        id: '5a',
+        type: 'put',
+        strike: 175,
+        expiration: expirationDates[2],
+        action: 'sell',
+        quantity: 1,
+        price: 3.50
+      },
+      {
+        id: '5b',
+        type: 'put',
+        strike: 170,
+        expiration: expirationDates[2],
+        action: 'buy',
+        quantity: 2,
+        price: 2.30
+      }
+    ],
+    maxProfit: 'Substantial',
+    maxLoss: 'Limited',
+    breakEven: [165, 171.50]
+  },
+  {
+    id: 'synthetic-short',
+    name: 'Synthetic Short',
+    description: 'A bearish strategy that simulates a short stock position using options.',
+    regime: 'bearish',
+    legs: [
+      {
+        id: '6a',
+        type: 'put',
+        strike: 175,
+        expiration: expirationDates[2],
+        action: 'buy',
+        quantity: 1,
+        price: 3.50
+      },
+      {
+        id: '6b',
+        type: 'call',
+        strike: 175,
+        expiration: expirationDates[2],
+        action: 'sell',
+        quantity: 1,
+        price: 5.10
+      }
+    ],
+    maxProfit: 'Substantial',
+    maxLoss: 'Unlimited',
+    breakEven: [175]
+  },
+  
+  // Neutral Strategies
+  {
+    id: 'iron-condor',
+    name: 'Iron Condor',
+    description: 'A neutral strategy that profits from low volatility and sideways price action.',
+    regime: 'neutral',
+    legs: [
+      {
+        id: '7a',
+        type: 'call',
+        strike: 185,
+        expiration: expirationDates[2],
         action: 'sell',
         quantity: 1,
         price: 2.45
       },
       {
-        id: '2b',
+        id: '7b',
         type: 'call',
-        strike: 430,
-        expiration: expirationDates[1],
+        strike: 190,
+        expiration: expirationDates[2],
         action: 'buy',
         quantity: 1,
         price: 1.15
       },
       {
-        id: '2c',
+        id: '7c',
         type: 'put',
-        strike: 380,
-        expiration: expirationDates[1],
+        strike: 165,
+        expiration: expirationDates[2],
         action: 'sell',
         quantity: 1,
         price: 1.95
       },
       {
-        id: '2d',
+        id: '7d',
         type: 'put',
-        strike: 370,
-        expiration: expirationDates[1],
+        strike: 160,
+        expiration: expirationDates[2],
         action: 'buy',
         quantity: 1,
         price: 0.85
@@ -215,7 +369,74 @@ export const mockStrategies: Strategy[] = [
     ],
     maxProfit: 240,
     maxLoss: 760,
-    breakEven: [377.60, 422.40]
+    breakEven: [162.40, 187.60]
+  },
+  {
+    id: 'butterfly',
+    name: 'Long Butterfly',
+    description: 'A neutral strategy that profits from the stock price staying near the middle strike.',
+    regime: 'neutral',
+    legs: [
+      {
+        id: '8a',
+        type: 'call',
+        strike: 170,
+        expiration: expirationDates[2],
+        action: 'buy',
+        quantity: 1,
+        price: 8.50
+      },
+      {
+        id: '8b',
+        type: 'call',
+        strike: 175,
+        expiration: expirationDates[2],
+        action: 'sell',
+        quantity: 2,
+        price: 5.10
+      },
+      {
+        id: '8c',
+        type: 'call',
+        strike: 180,
+        expiration: expirationDates[2],
+        action: 'buy',
+        quantity: 1,
+        price: 3.30
+      }
+    ],
+    maxProfit: 340,
+    maxLoss: 160,
+    breakEven: [171.60, 178.40]
+  },
+  {
+    id: 'calendar-spread',
+    name: 'Calendar Spread',
+    description: 'A neutral strategy that profits from time decay and stable prices.',
+    regime: 'neutral',
+    legs: [
+      {
+        id: '9a',
+        type: 'call',
+        strike: 175,
+        expiration: expirationDates[1],
+        action: 'sell',
+        quantity: 1,
+        price: 4.20
+      },
+      {
+        id: '9b',
+        type: 'call',
+        strike: 175,
+        expiration: expirationDates[3],
+        action: 'buy',
+        quantity: 1,
+        price: 6.30
+      }
+    ],
+    maxProfit: 'Limited',
+    maxLoss: 'Limited',
+    breakEven: [172, 178]
   }
 ];
 
