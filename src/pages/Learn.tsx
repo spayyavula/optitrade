@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trophy, Book, Target, TrendingUp, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Trophy, Book, Target, TrendingUp, ArrowRight, CheckCircle2, Medal, Users, Clock, DollarSign } from 'lucide-react';
 import PriceChart from '../components/common/PriceChart';
 import { mockAAPLData } from '../data/mockData';
 
@@ -21,11 +21,67 @@ interface Challenge {
   completed: boolean;
 }
 
+interface Tournament {
+  id: string;
+  title: string;
+  sponsor: string;
+  prize: string;
+  participants: number;
+  maxParticipants: number;
+  startDate: string;
+  endDate: string;
+  description: string;
+  requirements: string[];
+  status: 'upcoming' | 'active' | 'completed';
+}
+
 const Learn: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'lessons' | 'challenges' | 'simulator'>('lessons');
+  const [activeTab, setActiveTab] = useState<'lessons' | 'challenges' | 'simulator' | 'tournaments'>('tournaments');
   const [selectedPrice, setSelectedPrice] = useState<number>(175);
   const [userAnswer, setUserAnswer] = useState<'call' | 'put' | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+
+  const tournaments: Tournament[] = [
+    {
+      id: '1',
+      title: 'Goldman Sachs Options Trading Championship',
+      sponsor: 'Goldman Sachs',
+      prize: '$25,000',
+      participants: 2456,
+      maxParticipants: 5000,
+      startDate: '2025-03-15',
+      endDate: '2025-04-15',
+      description: 'Compete against the best traders in a month-long options trading competition. Trade virtual capital across multiple market conditions.',
+      requirements: ['Complete Options Basics course', 'Minimum Level 5', '100 simulated trades'],
+      status: 'upcoming'
+    },
+    {
+      id: '2',
+      title: 'JPMorgan Market Maker Challenge',
+      sponsor: 'JPMorgan Chase',
+      prize: '$15,000',
+      participants: 1823,
+      maxParticipants: 2000,
+      startDate: '2025-03-01',
+      endDate: '2025-03-31',
+      description: 'Test your market making skills by providing liquidity in volatile market conditions. Special focus on risk management.',
+      requirements: ['Complete Advanced Strategies course', 'Minimum Level 8', '250 simulated trades'],
+      status: 'active'
+    },
+    {
+      id: '3',
+      title: 'Morgan Stanley Volatility Masters',
+      sponsor: 'Morgan Stanley',
+      prize: '$10,000',
+      participants: 1500,
+      maxParticipants: 1500,
+      startDate: '2025-02-01',
+      endDate: '2025-02-28',
+      description: 'Master volatility trading strategies in this intensive competition. Trade VIX options and volatility-based strategies.',
+      requirements: ['Complete Greeks Explained course', 'Minimum Level 7'],
+      status: 'completed'
+    }
+  ];
 
   const lessons: Lesson[] = [
     {
@@ -100,7 +156,7 @@ const Learn: React.FC = () => {
     setTimeout(() => {
       setShowFeedback(false);
       setUserAnswer(null);
-      setSelectedPrice(Math.random() * 50 + 150); // Random price between 150-200
+      setSelectedPrice(Math.random() * 50 + 150);
     }, 2000);
   };
 
@@ -159,17 +215,34 @@ const Learn: React.FC = () => {
           <div className="card bg-gradient-to-br from-secondary-900 to-secondary-800">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
-                <Book className="text-secondary-400 mr-2" size={24} />
-                <h3 className="text-lg font-semibold">Next Lesson</h3>
+                <Medal className="text-secondary-400 mr-2" size={24} />
+                <h3 className="text-lg font-semibold">Tournament Status</h3>
               </div>
             </div>
-            <p className="text-sm mb-3">Greeks Explained: Understanding Delta</p>
-            <button className="btn-primary w-full">Continue Learning</button>
+            <p className="text-sm mb-3">JPMorgan Market Maker Challenge</p>
+            <div className="flex items-center justify-between text-sm mb-2">
+              <span className="text-secondary-400">Current Rank:</span>
+              <span className="font-medium">#156 of 1823</span>
+            </div>
+            <div className="h-2 bg-secondary-700 rounded-full mb-2">
+              <div className="h-full w-4/5 bg-secondary-400 rounded-full"></div>
+            </div>
+            <p className="text-xs text-secondary-400">Top 10% - Keep going!</p>
           </div>
         </div>
 
         <div className="card">
           <div className="flex space-x-1 bg-neutral-700 p-1 rounded-lg mb-6">
+            <button 
+              onClick={() => setActiveTab('tournaments')}
+              className={`flex-1 py-2 px-4 rounded-md transition-colors ${
+                activeTab === 'tournaments' 
+                  ? 'bg-neutral-600 text-white' 
+                  : 'text-neutral-400 hover:bg-neutral-600/50'
+              }`}
+            >
+              Tournaments
+            </button>
             <button 
               onClick={() => setActiveTab('lessons')}
               className={`flex-1 py-2 px-4 rounded-md transition-colors ${
@@ -201,6 +274,119 @@ const Learn: React.FC = () => {
               Market Simulator
             </button>
           </div>
+
+          {activeTab === 'tournaments' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Company Sponsored Tournaments</h3>
+                <div className="flex gap-2">
+                  <button className="btn-ghost text-sm py-1.5 px-3">Rules</button>
+                  <button className="btn-ghost text-sm py-1.5 px-3">Leaderboard</button>
+                  <button className="btn-primary text-sm py-1.5 px-3">My Tournaments</button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {tournaments.map((tournament) => (
+                  <div 
+                    key={tournament.id}
+                    className={`bg-neutral-750 p-4 rounded-lg border-2 ${
+                      tournament.status === 'active' 
+                        ? 'border-primary-500/30' 
+                        : tournament.status === 'upcoming'
+                          ? 'border-secondary-500/30'
+                          : 'border-neutral-700'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-medium mb-1">{tournament.title}</h4>
+                        <p className="text-sm text-neutral-400">Sponsored by {tournament.sponsor}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        tournament.status === 'active'
+                          ? 'bg-primary-900 text-primary-400'
+                          : tournament.status === 'upcoming'
+                            ? 'bg-secondary-900 text-secondary-400'
+                            : 'bg-neutral-800 text-neutral-400'
+                      }`}>
+                        {tournament.status.charAt(0).toUpperCase() + tournament.status.slice(1)}
+                      </span>
+                    </div>
+
+                    <p className="text-sm mb-4">{tournament.description}</p>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                      <div className="flex items-center">
+                        <DollarSign size={16} className="text-success-400 mr-2" />
+                        <div>
+                          <p className="text-neutral-400">Prize Pool</p>
+                          <p className="font-medium">{tournament.prize}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <Users size={16} className="text-primary-400 mr-2" />
+                        <div>
+                          <p className="text-neutral-400">Participants</p>
+                          <p className="font-medium">{tournament.participants}/{tournament.maxParticipants}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <Clock size={16} className="text-secondary-400 mr-2" />
+                        <div>
+                          <p className="text-neutral-400">Start Date</p>
+                          <p className="font-medium">{new Date(tournament.startDate).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <Clock size={16} className="text-secondary-400 mr-2" />
+                        <div>
+                          <p className="text-neutral-400">End Date</p>
+                          <p className="font-medium">{new Date(tournament.endDate).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <p className="text-sm font-medium">Requirements:</p>
+                      <ul className="text-sm space-y-1">
+                        {tournament.requirements.map((req, index) => (
+                          <li key={index} className="flex items-center text-neutral-400">
+                            <span className="w-1 h-1 bg-neutral-500 rounded-full mr-2"></span>
+                            {req}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="flex gap-3">
+                      {tournament.status === 'upcoming' && (
+                        <button className="btn-primary flex-1 py-1.5">Register Now</button>
+                      )}
+                      {tournament.status === 'active' && (
+                        <button className="btn-success flex-1 py-1.5">Enter Tournament</button>
+                      )}
+                      {tournament.status === 'completed' && (
+                        <button className="btn-ghost flex-1 py-1.5">View Results</button>
+                      )}
+                      <button className="btn-ghost flex-1 py-1.5">Learn More</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-neutral-750 p-4 rounded-lg">
+                <h4 className="font-medium mb-2">Tournament Rules & Guidelines</h4>
+                <ul className="text-sm space-y-2 text-neutral-400">
+                  <li>• All trading is done with virtual capital provided by the platform</li>
+                  <li>• Participants must meet all listed requirements before registering</li>
+                  <li>• Trading is restricted to specified instruments during tournament hours</li>
+                  <li>• Winners are determined based on total return and risk-adjusted metrics</li>
+                  <li>• Prizes are awarded within 14 days of tournament completion</li>
+                </ul>
+              </div>
+            </div>
+          )}
 
           {activeTab === 'lessons' && (
             <div className="space-y-4">
