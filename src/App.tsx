@@ -7,6 +7,7 @@ import Portfolio from './pages/Portfolio';
 import StrategyBuilder from './pages/StrategyBuilder';
 import Watchlist from './pages/Watchlist';
 import Scanner from './pages/Scanner';
+import Learn from './pages/Learn';
 
 function App() {
   return (
@@ -19,10 +20,9 @@ function App() {
           <Route path="/strategy-builder" element={<StrategyBuilder />} />
           <Route path="/watchlist" element={<Watchlist />} />
           <Route path="/scanner" element={<Scanner />} />
+          <Route path="/learn" element={<Learn />} />
         </Route>
       </Routes>
     </Router>
   );
 }
-
-export default App;
