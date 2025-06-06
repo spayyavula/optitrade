@@ -14,5 +14,6 @@ export default {
   build: {
     command: 'npm run build',
     directory: 'dist'
-  }
+  },
+  spa: true
 }
