@@ -29,7 +29,7 @@ const Sidebar: React.FC = () => {
     <aside className="hidden md:flex flex-col w-64 bg-neutral-800 border-r border-neutral-700">
       <div className="p-4 border-b border-neutral-700 flex items-center">
         <LineChart className="w-8 h-8 text-primary-500 mr-2" />
-        <h1 className="text-xl font-bold text-primary-400">OptiTrade</h1>
+        <h1 className="text-xl font-bold text-primary-400">OptionsWorld</h1>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4">

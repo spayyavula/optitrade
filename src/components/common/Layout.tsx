@@ -13,7 +13,7 @@ const Layout: React.FC = () => {
           <Outlet />
         </main>
         <footer className="p-4 text-center text-sm text-neutral-500 border-t border-neutral-800">
-          <p>OptiTrade © {new Date().getFullYear()} | Market data is simulated for demonstration purposes</p>
+          <p>OptionsWorld © {new Date().getFullYear()} | Market data is simulated for demonstration purposes</p>
         </footer>
       </div>
     </div>

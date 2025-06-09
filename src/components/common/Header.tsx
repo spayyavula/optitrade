@@ -70,7 +70,7 @@ const Header: React.FC = () => {
       <div className={`md:hidden fixed inset-0 bg-neutral-900 bg-opacity-90 z-50 transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="bg-neutral-800 h-full w-64 shadow-lg p-4">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-primary-400">OptiTrade</h2>
+            <h2 className="text-xl font-bold text-primary-400">OptionsWorld</h2>
             <button onClick={() => setIsMenuOpen(false)}>
               <X size={24} />
             </button>

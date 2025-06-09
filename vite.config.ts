@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'OptiTrade - Options Trading Platform',
-        short_name: 'OptiTrade',
+        name: 'OptionsWorld - Options Trading Platform',
+        short_name: 'OptionsWorld',
         description: 'Advanced options trading platform with strategy building and portfolio tracking',
         theme_color: '#0ea5e9',
         background_color: '#171717',
