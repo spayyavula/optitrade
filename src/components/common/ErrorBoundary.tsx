@@ -55,7 +55,7 @@ class ErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen bg-neutral-900 text-neutral-100 flex items-center justify-center p-4">
           <div className="bg-neutral-800 border border-neutral-700 rounded-xl shadow-xl w-full max-w-2xl p-6">
             <div className="flex items-center mb-6">
-              <AlertTriangle className="text-error-400 mr-3\" size={32} />
+              <AlertTriangle className="text-error-400 mr-3" size={32} />
               <div>
                 <h1 className="text-2xl font-bold text-error-300">Something went wrong</h1>
                 <p className="text-neutral-400 mt-1">The application encountered an unexpected error</p>
