@@ -15,10 +15,14 @@ interface RealTimeDataProviderProps {
 }
 
 export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ children }) => {
+  console.log('RealTimeDataProvider rendering');
+  
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   useEffect(() => {
+    console.log('RealTimeDataProvider useEffect starting');
+    
     let updateInterval: NodeJS.Timeout;
     let reconnectTimeout: NodeJS.Timeout;
 
@@ -29,9 +33,9 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
         
         // Simulate connection delay
         const connectionTimeout = setTimeout(() => {
+          console.log('Data feed connection established');
           setIsConnected(true);
           setLastUpdate(new Date());
-          console.log('Connected to real-time data feed');
         }, 2000);
 
         // Simulate periodic updates
@@ -44,7 +48,7 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
               console.log('Simulating connection loss...');
               setIsConnected(false);
               reconnectTimeout = setTimeout(() => {
-                console.log('Reconnecting...');
+                console.log('Reconnecting to data feed...');
                 setIsConnected(true);
               }, 5000); // Reconnect after 5s
             }
@@ -54,6 +58,7 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
         }, 1000);
 
         return () => {
+          console.log('Cleaning up data feed connection');
           clearTimeout(connectionTimeout);
           clearInterval(updateInterval);
           clearTimeout(reconnectTimeout);
@@ -67,6 +72,7 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
     const cleanup = connectToDataFeed();
     
     return () => {
+      console.log('RealTimeDataProvider cleanup');
       cleanup();
       if (updateInterval) clearInterval(updateInterval);
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
@@ -92,6 +98,8 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
       console.error('Error updating option data:', error);
     }
   };
+
+  console.log('RealTimeDataProvider providing context');
 
   return (
     <RealTimeDataContext.Provider value={{

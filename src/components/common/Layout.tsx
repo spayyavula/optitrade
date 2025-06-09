@@ -6,6 +6,8 @@ import { Outlet } from 'react-router-dom';
 import { RealTimeDataProvider } from './RealTimeDataProvider';
 
 const Layout: React.FC = () => {
+  console.log('Layout component rendering');
+  
   return (
     <RealTimeDataProvider>
       <div className="min-h-screen flex flex-col md:flex-row bg-neutral-900 text-neutral-100">

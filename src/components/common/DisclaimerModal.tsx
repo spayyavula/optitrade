@@ -7,16 +7,40 @@ interface DisclaimerModalProps {
 }
 
 const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ isOpen, onAccept }) => {
+  console.log('DisclaimerModal rendering, isOpen:', isOpen);
+  
   const [hasReadTerms, setHasReadTerms] = useState(false);
   const [hasReadRisks, setHasReadRisks] = useState(false);
   const [hasReadDisclaimer, setHasReadDisclaimer] = useState(false);
   const [canProceed, setCanProceed] = useState(false);
 
   useEffect(() => {
-    setCanProceed(hasReadTerms && hasReadRisks && hasReadDisclaimer);
+    const newCanProceed = hasReadTerms && hasReadRisks && hasReadDisclaimer;
+    console.log('DisclaimerModal canProceed check:', {
+      hasReadTerms,
+      hasReadRisks,
+      hasReadDisclaimer,
+      canProceed: newCanProceed
+    });
+    setCanProceed(newCanProceed);
   }, [hasReadTerms, hasReadRisks, hasReadDisclaimer]);
 
-  if (!isOpen) return null;
+  const handleAccept = () => {
+    console.log('DisclaimerModal accept button clicked');
+    if (canProceed) {
+      console.log('All requirements met, calling onAccept');
+      onAccept();
+    } else {
+      console.log('Requirements not met, cannot proceed');
+    }
+  };
+
+  if (!isOpen) {
+    console.log('DisclaimerModal not open, returning null');
+    return null;
+  }
+
+  console.log('DisclaimerModal rendering modal content');
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
@@ -53,7 +77,10 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ isOpen, onAccept }) =
                     <input
                       type="checkbox"
                       checked={hasReadDisclaimer}
-                      onChange={(e) => setHasReadDisclaimer(e.target.checked)}
+                      onChange={(e) => {
+                        console.log('Educational checkbox changed:', e.target.checked);
+                        setHasReadDisclaimer(e.target.checked);
+                      }}
                       className="mr-2 w-4 h-4 text-primary-600 bg-neutral-700 border-neutral-600 rounded focus:ring-primary-500"
                     />
                     <span className="text-sm text-primary-300">I understand this is an educational platform only</span>
@@ -89,7 +116,10 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ isOpen, onAccept }) =
                     <input
                       type="checkbox"
                       checked={hasReadRisks}
-                      onChange={(e) => setHasReadRisks(e.target.checked)}
+                      onChange={(e) => {
+                        console.log('Risks checkbox changed:', e.target.checked);
+                        setHasReadRisks(e.target.checked);
+                      }}
                       className="mr-2 w-4 h-4 text-error-600 bg-neutral-700 border-neutral-600 rounded focus:ring-error-500"
                     />
                     <span className="text-sm text-error-300">I understand the risks of options trading</span>
@@ -122,7 +152,10 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ isOpen, onAccept }) =
                     <input
                       type="checkbox"
                       checked={hasReadTerms}
-                      onChange={(e) => setHasReadTerms(e.target.checked)}
+                      onChange={(e) => {
+                        console.log('Terms checkbox changed:', e.target.checked);
+                        setHasReadTerms(e.target.checked);
+                      }}
                       className="mr-2 w-4 h-4 text-warning-600 bg-neutral-700 border-neutral-600 rounded focus:ring-warning-500"
                     />
                     <span className="text-sm text-warning-300">I understand the data limitations and liability terms</span>
@@ -158,13 +191,16 @@ const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ isOpen, onAccept }) =
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  console.log('Exit button clicked');
+                  window.location.reload();
+                }}
                 className="btn-ghost px-6 py-2"
               >
                 Exit
               </button>
               <button
-                onClick={onAccept}
+                onClick={handleAccept}
                 disabled={!canProceed}
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
                   canProceed
