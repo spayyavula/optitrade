@@ -84,19 +84,17 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
         });
         
       } catch (error) {
-        console.error('Failed to connect to Polygon.io:', error);
-        
         // Check if the service has fallen back to simulated data
         const isServiceConnected = polygonService.isConnectedToStream();
         
         if (isServiceConnected) {
-          // Successfully using simulated data
+          // Successfully using simulated data - this is not an error, just a fallback
+          console.info('Market is closed or WebSocket connection timed out - using simulated data for demonstration');
           setIsConnected(true);
           setConnectionStatus('simulated');
           setIsLiveConnection(false);
           setIsSimulatedData(true);
           setLastUpdate(new Date());
-          console.log('Using simulated data after WebSocket connection timeout');
           
           // Subscribe to some default symbols for demo with simulated data
           const defaultSymbols = ['AAPL', 'MSFT', 'GOOGL', 'TSLA'];
@@ -111,7 +109,8 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
             setLastUpdate(new Date());
           });
         } else {
-          // Complete failure - try to get last EOD price
+          // Complete failure - this is a real error
+          console.error('Failed to connect to Polygon.io and unable to fall back to simulated data:', error);
           setIsConnected(false);
           setConnectionStatus('error');
           setIsLiveConnection(false);
