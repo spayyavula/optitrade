@@ -1,26 +1,38 @@
 import React, { useState } from 'react';
-import StockPrice from '../components/common/StockPrice';
+import LivePriceDisplay from '../components/common/LivePriceDisplay';
 import PriceChart from '../components/common/PriceChart';
-import OptionsChainTable from '../components/optionsChain/OptionsChainTable';
+import LiveOptionsChain from '../components/options/LiveOptionsChain';
 import DisclaimerBanner from '../components/common/DisclaimerBanner';
-import { mockOptionsChain, mockAAPLData, mockStocks } from '../data/mockData';
-import { Option } from '../types';
-import { AlertCircle, X } from 'lucide-react';
+import { mockAAPLData } from '../data/mockData';
+import { PolygonOptionQuote } from '../services/polygonService';
+import { AlertCircle, X, Activity } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const OptionsChain: React.FC = () => {
-  const [selectedExpiration, setSelectedExpiration] = useState(mockOptionsChain.expirations[0]);
-  const [selectedOption, setSelectedOption] = useState<Option | null>(null);
+  const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
+  const [selectedExpiration, setSelectedExpiration] = useState('2025-01-17');
+  const [selectedOption, setSelectedOption] = useState<PolygonOptionQuote | null>(null);
   const [isBuy, setIsBuy] = useState(true);
   const [showTrade, setShowTrade] = useState(false);
   const [quantity, setQuantity] = useState(1);
   
-  const appleStock = mockStocks.find(stock => stock.symbol === 'AAPL');
-  
-  const handleOptionSelect = (option: Option, buy: boolean) => {
+  const availableExpirations = [
+    '2025-01-17',
+    '2025-01-24',
+    '2025-02-21',
+    '2025-03-21',
+    '2025-04-18',
+    '2025-06-20'
+  ];
+
+  const handleOptionSelect = (option: PolygonOptionQuote, buy: boolean) => {
     setSelectedOption(option);
     setIsBuy(buy);
     setShowTrade(true);
+  };
+
+  const handleSymbolChange = (symbol: string) => {
+    setSelectedSymbol(symbol.toUpperCase());
   };
 
   return (
@@ -28,21 +40,41 @@ const OptionsChain: React.FC = () => {
       <DisclaimerBanner />
       
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-6">Options Chain</h1>
+        <h1 className="text-2xl font-bold mb-6">Live Options Chain</h1>
+        
+        {/* Symbol Selection */}
+        <div className="card mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="flex items-center">
+              <label htmlFor="symbol" className="text-sm text-neutral-400 mr-2">Symbol:</label>
+              <input
+                id="symbol"
+                type="text"
+                value={selectedSymbol}
+                onChange={(e) => handleSymbolChange(e.target.value)}
+                className="input w-24 text-center font-mono uppercase"
+                placeholder="AAPL"
+                maxLength={5}
+              />
+            </div>
+            
+            <div className="flex items-center">
+              <Activity size={16} className="text-success-400 mr-2" />
+              <span className="text-sm text-success-400">Real-time data via Polygon.io</span>
+            </div>
+          </div>
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="lg:col-span-2 card">
             <div className="mb-4 flex justify-between items-center">
               <div>
-                {appleStock && (
-                  <StockPrice 
-                    symbol={appleStock.symbol}
-                    price={appleStock.price}
-                    change={appleStock.change}
-                    percentChange={appleStock.percentChange}
-                    animated
-                  />
-                )}
+                <LivePriceDisplay 
+                  symbol={selectedSymbol}
+                  showChange={true}
+                  showVolume={true}
+                  size="lg"
+                />
               </div>
               <div className="flex space-x-1 bg-neutral-700 p-1 rounded-lg">
                 <button className="text-xs py-1 px-2 rounded-md bg-neutral-600 text-white">1D</button>
@@ -56,54 +88,49 @@ const OptionsChain: React.FC = () => {
           </div>
           
           <div className="card">
-            <h3 className="text-lg font-semibold mb-4">Company Information</h3>
+            <h3 className="text-lg font-semibold mb-4">Market Information</h3>
             <div className="space-y-4">
               <div>
-                <h4 className="text-sm text-neutral-400 mb-1">Apple Inc. (AAPL)</h4>
+                <h4 className="text-sm text-neutral-400 mb-1">{selectedSymbol} Corporation</h4>
                 <p className="text-sm">
-                  Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, 
-                  wearables, and accessories worldwide. The company offers iPhone, Mac, iPad, and wearables, 
-                  home, and accessories.
+                  Real-time options data powered by Polygon.io. All prices and Greeks are 
+                  calculated using live market data and Black-Scholes methodology.
                 </p>
               </div>
               
               <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <div>
-                  <h4 className="text-xs text-neutral-400">Market Cap</h4>
-                  <p className="font-medium">$2.78T</p>
+                  <h4 className="text-xs text-neutral-400">Data Source</h4>
+                  <p className="font-medium">Polygon.io</p>
                 </div>
                 <div>
-                  <h4 className="text-xs text-neutral-400">P/E Ratio</h4>
-                  <p className="font-medium">29.2</p>
+                  <h4 className="text-xs text-neutral-400">Update Frequency</h4>
+                  <p className="font-medium">Real-time</p>
                 </div>
                 <div>
-                  <h4 className="text-xs text-neutral-400">52-Week High</h4>
-                  <p className="font-medium">$198.23</p>
+                  <h4 className="text-xs text-neutral-400">Options Available</h4>
+                  <p className="font-medium">Calls & Puts</p>
                 </div>
                 <div>
-                  <h4 className="text-xs text-neutral-400">52-Week Low</h4>
-                  <p className="font-medium">$142.18</p>
-                </div>
-                <div>
-                  <h4 className="text-xs text-neutral-400">Average Volume</h4>
-                  <p className="font-medium">60.2M</p>
-                </div>
-                <div>
-                  <h4 className="text-xs text-neutral-400">Dividend Yield</h4>
-                  <p className="font-medium">0.51%</p>
+                  <h4 className="text-xs text-neutral-400">Greeks Included</h4>
+                  <p className="font-medium">Δ, Γ, Θ, ν, IV</p>
                 </div>
               </div>
               
               <div className="pt-3 border-t border-neutral-700">
-                <h4 className="text-sm font-medium mb-2">Upcoming Events</h4>
-                <div className="text-sm">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-neutral-300">Earnings</span>
-                    <span>Jul 25, 2025</span>
+                <h4 className="text-sm font-medium mb-2">Live Features</h4>
+                <div className="text-sm space-y-1">
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-success-400 rounded-full mr-2"></div>
+                    <span>Real-time bid/ask spreads</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-300">Ex-Dividend</span>
-                    <span>Aug 12, 2025</span>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-success-400 rounded-full mr-2"></div>
+                    <span>Live implied volatility</span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-success-400 rounded-full mr-2"></div>
+                    <span>Dynamic Greeks calculation</span>
                   </div>
                 </div>
               </div>
@@ -113,7 +140,7 @@ const OptionsChain: React.FC = () => {
         
         <div className="card">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <h3 className="text-xl font-semibold">Options Chain - {mockOptionsChain.symbol}</h3>
+            <h3 className="text-xl font-semibold">Live Options Chain - {selectedSymbol}</h3>
             
             <div className="flex flex-wrap gap-2 items-center">
               <div className="flex items-center bg-neutral-800 rounded-lg overflow-hidden">
@@ -123,7 +150,7 @@ const OptionsChain: React.FC = () => {
                   onChange={(e) => setSelectedExpiration(e.target.value)}
                   className="select bg-transparent border-none text-sm py-2"
                 >
-                  {mockOptionsChain.expirations.map(date => (
+                  {availableExpirations.map(date => (
                     <option key={date} value={date}>
                       {new Date(date).toLocaleDateString()} ({Math.floor((new Date(date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d)
                     </option>
@@ -133,19 +160,18 @@ const OptionsChain: React.FC = () => {
             </div>
           </div>
           
-          <div className="bg-neutral-750 border border-neutral-700 p-3 rounded-lg mb-4 flex items-center">
-            <AlertCircle size={20} className="text-primary-400 mr-2" />
+          <div className="bg-primary-900/20 border border-primary-700/30 p-3 rounded-lg mb-4 flex items-center">
+            <Activity size={20} className="text-primary-400 mr-2" />
             <p className="text-sm">
-              Click on any option row to see more details and trading actions. Options shown are for educational purposes only.
-              <strong className="text-warning-400 ml-1">Always verify prices with your broker before trading.</strong>
+              <strong>Live Market Data:</strong> Options prices update in real-time via Polygon.io WebSocket connection. 
+              Greeks are calculated using Black-Scholes model with live implied volatility.
+              <strong className="text-warning-400 ml-1">Educational platform - not for actual trading.</strong>
             </p>
           </div>
           
-          <OptionsChainTable 
-            calls={mockOptionsChain.calls}
-            puts={mockOptionsChain.puts}
-            stockPrice={appleStock?.price || 0}
-            selectedExpiration={selectedExpiration}
+          <LiveOptionsChain 
+            symbol={selectedSymbol}
+            expiration={selectedExpiration}
             onOptionSelect={handleOptionSelect}
           />
         </div>
@@ -170,24 +196,31 @@ const OptionsChain: React.FC = () => {
             <div className="p-4">
               <div className="bg-warning-900 border border-warning-700 p-3 rounded-lg mb-4">
                 <p className="text-warning-200 text-sm">
-                  <strong>Educational Only:</strong> This is a simulation. OptionsWorld is not a broker and cannot execute real trades.
+                  <strong>Educational Only:</strong> This is a simulation using real market data. 
+                  OptionsWorld cannot execute actual trades.
                 </p>
               </div>
               
               <div className="mb-4">
                 <p className="mb-2">
                   <span className="text-neutral-400 text-sm">Symbol: </span>
-                  <span className="font-medium">{mockOptionsChain.symbol}</span>
+                  <span className="font-medium">{selectedSymbol}</span>
                 </p>
                 <p className="mb-2">
                   <span className="text-neutral-400 text-sm">Contract: </span>
                   <span className="font-medium">
-                    {mockOptionsChain.symbol} {selectedOption.strike} {selectedOption.type.toUpperCase()} {formatDate(selectedOption.expiration)}
+                    {selectedSymbol} {selectedOption.strike} {selectedOption.type.toUpperCase()} {formatDate(selectedOption.expiration)}
                   </span>
                 </p>
                 <p className="mb-2">
-                  <span className="text-neutral-400 text-sm">Price: </span>
+                  <span className="text-neutral-400 text-sm">Live Price: </span>
                   <span className="font-medium">{formatCurrency(selectedOption.ask)}/contract</span>
+                </p>
+                <p className="mb-2">
+                  <span className="text-neutral-400 text-sm">Implied Volatility: </span>
+                  <span className="font-medium">
+                    {selectedOption.impliedVolatility ? `${(selectedOption.impliedVolatility * 100).toFixed(1)}%` : 'N/A'}
+                  </span>
                 </p>
               </div>
               
