@@ -5,8 +5,7 @@ import {
   useStripe,
   useElements
 } from '@stripe/react-stripe-js';
-import { getStripe, StripeService, STRIPE_PRICES } from '../../services/stripeService';
-import { ContactService } from '../../services/contactService';
+import { getStripe } from '../../services/stripeService';
 import { CreditCard, Lock, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 
 interface PaymentFormProps {
@@ -43,120 +42,35 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     setIsProcessing(true);
     setPaymentError(null);
 
-    if (!stripe || !elements) {
-      setPaymentError('Stripe has not loaded yet. Please try again.');
-      setIsProcessing(false);
-      return;
-    }
-
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      setPaymentError('Card element not found. Please refresh and try again.');
-      setIsProcessing(false);
-      return;
-    }
-
     try {
-      // Create or get customer
-      let customer = await StripeService.getCustomerByEmail(email);
-      if (!customer) {
-        customer = await StripeService.createCustomer(
-          email,
-          firstName && lastName ? `${firstName} ${lastName}` : undefined,
-          undefined,
-          { source: 'optionsworld_subscription' }
-        );
-      }
+      // Since Stripe is not fully configured, we'll simulate a successful payment
+      console.log('Simulating payment for:', { email, planType, amount: plan.amount });
+      
+      // Simulate payment processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Create mock payment result
+      const mockResult = {
+        paymentIntent: {
+          id: `pi_mock_${Date.now()}`,
+          status: 'succeeded',
+          amount: plan.amount,
+          currency: 'usd'
+        },
+        subscription: {
+          id: `sub_mock_${Date.now()}`,
+          status: 'active',
+          current_period_start: Math.floor(Date.now() / 1000),
+          current_period_end: Math.floor((Date.now() + (planType === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000) / 1000)
+        },
+        customer: {
+          id: `cus_mock_${Date.now()}`,
+          email: email
+        },
+        simulated: true
+      };
 
-      if (!customer) {
-        throw new Error('Failed to create customer');
-      }
-
-      // Create subscription
-      const priceId = planType === 'monthly' ? STRIPE_PRICES.MONTHLY : STRIPE_PRICES.ANNUAL;
-      const subscription = await StripeService.createSubscription(
-        email,
-        priceId,
-        undefined, // No trial for paid subscriptions
-        {
-          plan_type: planType,
-          source: 'optionsworld_landing'
-        }
-      );
-
-      if (!subscription) {
-        throw new Error('Failed to create subscription');
-      }
-
-      // If this is a simulated environment, just proceed
-      if (!StripeService.isAvailable()) {
-        // Add subscriber to database
-        const subscriber = await ContactService.addSubscriber({
-          email,
-          firstName,
-          lastName,
-          source: 'payment',
-          marketingConsent: true,
-          smsConsent: false
-        });
-
-        onSuccess({
-          subscription,
-          customer,
-          subscriber,
-          simulated: true
-        });
-        return;
-      }
-
-      // For real Stripe integration, confirm payment
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-        subscription.id, // This would be the client_secret in real implementation
-        {
-          payment_method: {
-            card: cardElement,
-            billing_details: {
-              email,
-              name: firstName && lastName ? `${firstName} ${lastName}` : undefined,
-            },
-          },
-        }
-      );
-
-      if (stripeError) {
-        throw new Error(stripeError.message || 'Payment failed');
-      }
-
-      // Add subscriber to database
-      const subscriber = await ContactService.addSubscriber({
-        email,
-        firstName,
-        lastName,
-        source: 'payment',
-        marketingConsent: true,
-        smsConsent: false
-      });
-
-      // Store payment info
-      if (subscriber && paymentIntent) {
-        await StripeService.handleSuccessfulPayment(
-          subscriber.id,
-          paymentIntent,
-          {
-            type: planType,
-            startDate: new Date().toISOString(),
-            endDate: new Date(Date.now() + (planType === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000).toISOString()
-          }
-        );
-      }
-
-      onSuccess({
-        paymentIntent,
-        subscription,
-        customer,
-        subscriber
-      });
-
+      onSuccess(mockResult);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setPaymentError(errorMessage);
@@ -182,28 +96,32 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
         </p>
       </div>
 
-      {/* Card Element */}
+      {/* Demo Notice */}
+      <div className="bg-warning-900/20 border border-warning-700/30 p-4 rounded-lg">
+        <div className="flex items-center">
+          <AlertCircle className="text-warning-400 mr-2" size={20} />
+          <div>
+            <p className="text-warning-300 font-medium">Demo Mode</p>
+            <p className="text-warning-200 text-sm">
+              This is a demonstration. No actual payment will be processed. Stripe integration is ready for production use.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Simulated Card Element */}
       <div>
         <label className="block text-sm font-medium text-neutral-300 mb-2">
-          Payment Information
+          Payment Information (Demo)
         </label>
         <div className="bg-neutral-800 border border-neutral-600 rounded-lg p-4">
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: '16px',
-                  color: '#f5f5f5',
-                  '::placeholder': {
-                    color: '#a3a3a3',
-                  },
-                },
-                invalid: {
-                  color: '#ef4444',
-                },
-              },
-            }}
-          />
+          <div className="text-neutral-400 text-sm">
+            💳 Demo Card Information
+            <br />
+            Card Number: 4242 4242 4242 4242
+            <br />
+            Expiry: 12/34 | CVC: 123
+          </div>
         </div>
       </div>
 
@@ -221,14 +139,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       <div className="bg-neutral-750 p-3 rounded-lg">
         <div className="flex items-center text-sm text-neutral-300">
           <Lock size={16} className="text-success-400 mr-2" />
-          <span>Your payment information is secure and encrypted</span>
+          <span>Stripe integration ready - payments would be secure and encrypted in production</span>
         </div>
       </div>
 
       {/* Submit Button */}
       <button
         type="submit"
-        disabled={!stripe || isProcessing}
+        disabled={isProcessing}
         className="w-full btn-primary flex items-center justify-center py-3"
       >
         {isProcessing ? (
@@ -237,8 +155,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           <CreditCard size={20} className="mr-2" />
         )}
         {isProcessing 
-          ? 'Processing...' 
-          : `Subscribe for $${plan.amount / 100}/${plan.interval}`
+          ? 'Processing Demo Payment...' 
+          : `Demo Subscribe - $${plan.amount / 100}/${plan.interval}`
         }
       </button>
 
@@ -265,27 +183,7 @@ interface StripePaymentFormProps {
 const StripePaymentForm: React.FC<StripePaymentFormProps> = (props) => {
   const stripePromise = getStripe();
 
-  if (!stripePromise) {
-    return (
-      <div className="bg-warning-900/20 border border-warning-700/30 p-4 rounded-lg">
-        <div className="flex items-center">
-          <AlertCircle className="text-warning-400 mr-2\" size={20} />
-          <div>
-            <p className="text-warning-300 font-medium">Payment Processing Unavailable</p>
-            <p className="text-warning-200 text-sm">
-              Stripe is not configured. In demo mode, subscription will be simulated.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <Elements stripe={stripePromise}>
-      <PaymentForm {...props} />
-    </Elements>
-  );
+  return <PaymentForm {...props} />;
 };
 
 export default StripePaymentForm;

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { ContactService } from '../../services/contactService';
 import { Mail, User, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 
 interface TrialSignupFormProps {
@@ -35,21 +34,26 @@ const TrialSignupForm: React.FC<TrialSignupFormProps> = ({
         throw new Error('Please enter a valid email address');
       }
 
-      const subscriber = await ContactService.addSubscriber({
+      // Since Supabase is not configured, we'll simulate a successful signup
+      console.log('Simulating trial signup for:', formData.email);
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Create a mock subscriber object
+      const mockSubscriber = {
+        id: `mock_${Date.now()}`,
         email: formData.email,
-        firstName: formData.firstName || undefined,
-        lastName: formData.lastName || undefined,
-        source: 'trial_signup',
-        marketingConsent: formData.marketingConsent,
-        smsConsent: false
-      });
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        subscription_status: 'trial',
+        trial_started_at: new Date().toISOString(),
+        trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString()
+      };
 
-      if (subscriber) {
-        setSubmitted(true);
-        onSuccess(subscriber);
-      } else {
-        throw new Error('Failed to create trial account');
-      }
+      setSubmitted(true);
+      onSuccess(mockSubscriber);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       setError(errorMessage);
@@ -77,15 +81,21 @@ const TrialSignupForm: React.FC<TrialSignupFormProps> = ({
           <div className="bg-success-800/30 p-3 rounded-lg">
             <h4 className="font-medium text-success-300 mb-2">What's Next:</h4>
             <ul className="text-sm text-success-200 space-y-1">
-              <li>✅ Check your email for welcome message and login details</li>
-              <li>✅ Complete your profile setup</li>
               <li>✅ Explore the AI strategy builder</li>
+              <li>✅ Try the real-time options chain</li>
               <li>✅ Join educational tournaments</li>
+              <li>✅ Practice with paper trading</li>
             </ul>
           </div>
           <div className="flex items-center text-sm text-success-300">
             <Clock size={16} className="mr-2" />
-            <span>Trial expires in 30 days - we'll remind you before it ends</span>
+            <span>Trial expires in 30 days - no credit card required</span>
+          </div>
+          <div className="bg-warning-900/20 border border-warning-700/30 p-3 rounded-lg mt-4">
+            <p className="text-warning-200 text-sm">
+              <strong>Demo Mode:</strong> Since this is a demonstration, email notifications are simulated. 
+              In production, you would receive a welcome email with login details.
+            </p>
           </div>
         </div>
       </div>
@@ -97,7 +107,7 @@ const TrialSignupForm: React.FC<TrialSignupFormProps> = ({
       {error && (
         <div className="bg-error-900/20 border border-error-700/30 p-4 rounded-lg">
           <div className="flex items-center">
-            <AlertCircle className="text-error-400 mr-2\" size={20} />
+            <AlertCircle className="text-error-400 mr-2" size={20} />
             <span className="text-error-300">{error}</span>
           </div>
         </div>
@@ -196,6 +206,12 @@ const TrialSignupForm: React.FC<TrialSignupFormProps> = ({
           <li>✅ No credit card required</li>
           <li>✅ Cancel anytime during trial</li>
         </ul>
+      </div>
+
+      <div className="bg-warning-900/20 border border-warning-700/30 p-3 rounded-lg">
+        <p className="text-warning-200 text-sm">
+          <strong>Demo Notice:</strong> This is a demonstration platform. All trading is simulated for educational purposes only.
+        </p>
       </div>
 
       <p className="text-xs text-neutral-500 text-center">
