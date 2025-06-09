@@ -1,5 +1,5 @@
 export default {
-  name: 'options-trading-platform',
+  name: 'optionsworld-trading-platform',
   output: 'dist',
   static: true,
   routes: [
