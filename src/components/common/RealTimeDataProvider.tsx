@@ -5,8 +5,11 @@ import { polygonService, PolygonQuote, PolygonOptionQuote } from '../../services
 interface RealTimeDataContextType {
   isConnected: boolean;
   lastUpdate: Date | null;
-  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' | 'simulated';
   subscriptionCount: number;
+  isLiveConnection: boolean;
+  isSimulatedData: boolean;
+  lastEODPrice: number | null;
   updateStock: (symbol: string, data: Partial<Stock>) => void;
   updateOption: (symbol: string, strike: number, expiration: string, type: 'call' | 'put', data: Partial<Option>) => void;
   subscribeToStock: (symbol: string, callback: (data: PolygonQuote) => void) => void;
@@ -26,8 +29,11 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
   
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('connecting');
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error' | 'simulated'>('connecting');
   const [subscriptionCount, setSubscriptionCount] = useState(0);
+  const [isLiveConnection, setIsLiveConnection] = useState(false);
+  const [isSimulatedData, setIsSimulatedData] = useState(false);
+  const [lastEODPrice, setLastEODPrice] = useState<number | null>(null);
 
   useEffect(() => {
     console.log('RealTimeDataProvider useEffect starting - connecting to Polygon.io');
@@ -38,14 +44,31 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
     const connectToPolygon = async () => {
       try {
         setConnectionStatus('connecting');
+        setIsLiveConnection(false);
+        setIsSimulatedData(false);
         console.log('Connecting to Polygon.io WebSocket...');
         
         await polygonService.connect();
         
-        setIsConnected(true);
-        setConnectionStatus('connected');
-        setLastUpdate(new Date());
-        console.log('Successfully connected to Polygon.io');
+        // Check if we have a real WebSocket connection
+        const isRealConnection = polygonService.isConnectedToStream();
+        
+        if (isRealConnection) {
+          setIsConnected(true);
+          setConnectionStatus('connected');
+          setIsLiveConnection(true);
+          setIsSimulatedData(false);
+          setLastUpdate(new Date());
+          console.log('Successfully connected to Polygon.io live stream');
+        } else {
+          // We're using simulated data
+          setIsConnected(true);
+          setConnectionStatus('simulated');
+          setIsLiveConnection(false);
+          setIsSimulatedData(true);
+          setLastUpdate(new Date());
+          console.log('Using simulated data - WebSocket connection failed or market closed');
+        }
         
         // Subscribe to some default symbols for demo
         const defaultSymbols = ['AAPL', 'MSFT', 'GOOGL', 'TSLA'];
@@ -69,7 +92,9 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
         if (isServiceConnected) {
           // Successfully using simulated data
           setIsConnected(true);
-          setConnectionStatus('connected');
+          setConnectionStatus('simulated');
+          setIsLiveConnection(false);
+          setIsSimulatedData(true);
           setLastUpdate(new Date());
           console.log('Using simulated data after WebSocket connection timeout');
           
@@ -86,9 +111,21 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
             setLastUpdate(new Date());
           });
         } else {
-          // Complete failure
+          // Complete failure - try to get last EOD price
           setIsConnected(false);
           setConnectionStatus('error');
+          setIsLiveConnection(false);
+          setIsSimulatedData(false);
+          
+          // Try to fetch last EOD price for AAPL as fallback
+          try {
+            const eodData = await polygonService.getLastQuote('AAPL');
+            if (eodData && eodData.last && eodData.last.price) {
+              setLastEODPrice(eodData.last.price);
+            }
+          } catch (eodError) {
+            console.error('Failed to fetch EOD price:', eodError);
+          }
           
           // Retry connection after 10 seconds
           reconnectTimeout = setTimeout(() => {
@@ -104,13 +141,19 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
       const connected = polygonService.isConnectedToStream();
       const subCount = polygonService.getSubscriptionCount();
       
-      setIsConnected(connected);
       setSubscriptionCount(subCount);
       
       if (!connected && connectionStatus === 'connected') {
         setConnectionStatus('disconnected');
+        setIsLiveConnection(false);
         console.log('Polygon.io connection lost, attempting to reconnect...');
         connectToPolygon();
+      } else if (connected && !isLiveConnection && connectionStatus !== 'simulated') {
+        // Check if we've regained live connection
+        setIsConnected(true);
+        setConnectionStatus('connected');
+        setIsLiveConnection(true);
+        setIsSimulatedData(false);
       }
     }, 5000);
 
@@ -191,6 +234,9 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
       lastUpdate,
       connectionStatus,
       subscriptionCount,
+      isLiveConnection,
+      isSimulatedData,
+      lastEODPrice,
       updateStock,
       updateOption,
       subscribeToStock,

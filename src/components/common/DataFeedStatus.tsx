@@ -1,11 +1,19 @@
 import React from 'react';
-import { Wifi, WifiOff, Clock, Activity, AlertCircle } from 'lucide-react';
+import { Wifi, WifiOff, Clock, Activity, AlertCircle, Zap, Database } from 'lucide-react';
 import { useRealTimeData } from './RealTimeDataProvider';
 import { polygonService } from '../../services/polygonService';
 import { formatCurrency } from '../../utils/formatters';
 
 const DataFeedStatus: React.FC = () => {
-  const { isConnected, lastUpdate, connectionStatus, subscriptionCount, lastEODPrice } = useRealTimeData();
+  const { 
+    isConnected, 
+    lastUpdate, 
+    connectionStatus, 
+    subscriptionCount, 
+    lastEODPrice,
+    isLiveConnection,
+    isSimulatedData
+  } = useRealTimeData();
 
   const formatLastUpdate = (date: Date | null) => {
     if (!date) return 'Never';
@@ -21,7 +29,8 @@ const DataFeedStatus: React.FC = () => {
   const getStatusColor = () => {
     switch (connectionStatus) {
       case 'connected': return 'text-success-400';
-      case 'connecting': return 'text-warning-400';
+      case 'simulated': return 'text-warning-400';
+      case 'connecting': return 'text-neutral-400';
       case 'disconnected': return 'text-error-400';
       case 'error': return 'text-error-500';
       default: return 'text-neutral-400';
@@ -31,6 +40,7 @@ const DataFeedStatus: React.FC = () => {
   const getStatusIcon = () => {
     switch (connectionStatus) {
       case 'connected': return <Wifi size={16} />;
+      case 'simulated': return <Database size={16} />;
       case 'connecting': return <Activity size={16} className="animate-pulse" />;
       case 'disconnected': return <WifiOff size={16} />;
       case 'error': return <AlertCircle size={16} />;
@@ -40,9 +50,14 @@ const DataFeedStatus: React.FC = () => {
 
   const getStatusText = async () => {
     switch (connectionStatus) {
-      case 'connected': return 'Polygon.io Live';
-      case 'connecting': return 'Connecting...';
-      case 'disconnected': return 'Disconnected';
+      case 'connected': 
+        return isLiveConnection ? 'Polygon.io Live' : 'Connected';
+      case 'simulated':
+        return 'Simulated Data';
+      case 'connecting': 
+        return 'Connecting...';
+      case 'disconnected': 
+        return 'Disconnected';
       case 'error': 
         try {
           const marketStatus = await polygonService.getMarketStatus();
@@ -55,7 +70,8 @@ const DataFeedStatus: React.FC = () => {
           // Fall back to generic error if market status check fails
         }
         return 'Connection Error';
-      default: return 'Unknown';
+      default: 
+        return 'Unknown';
     }
   };
 
@@ -63,7 +79,7 @@ const DataFeedStatus: React.FC = () => {
 
   React.useEffect(() => {
     getStatusText().then(setStatusText);
-  }, [connectionStatus]);
+  }, [connectionStatus, isLiveConnection]);
 
   return (
     <div className="flex items-center space-x-3 text-sm">
@@ -88,9 +104,23 @@ const DataFeedStatus: React.FC = () => {
         </>
       )}
       
+      {/* Show additional context based on connection type */}
+      {isSimulatedData && (
+        <div className="flex items-center text-warning-400 text-xs">
+          <Zap size={12} className="mr-1" />
+          <span>Demo Mode</span>
+        </div>
+      )}
+      
       {connectionStatus === 'error' && (
         <div className="text-xs text-error-400">
-          {lastEODPrice ? `Last Close: ${formatCurrency(lastEODPrice)}` : 'Using demo data'}
+          {lastEODPrice ? `Last Close: ${formatCurrency(lastEODPrice)}` : 'Using fallback data'}
+        </div>
+      )}
+      
+      {connectionStatus === 'simulated' && (
+        <div className="text-xs text-warning-400">
+          Market may be closed - using simulated data
         </div>
       )}
     </div>
