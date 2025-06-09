@@ -269,7 +269,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = (props) => {
     return (
       <div className="bg-warning-900/20 border border-warning-700/30 p-4 rounded-lg">
         <div className="flex items-center">
-          <AlertCircle className="text-warning-400 mr-2" size={20} />
+          <AlertCircle className="text-warning-400 mr-2\" size={20} />
           <div>
             <p className="text-warning-300 font-medium">Payment Processing Unavailable</p>
             <p className="text-warning-200 text-sm">
