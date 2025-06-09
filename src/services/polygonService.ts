@@ -35,6 +35,7 @@ class PolygonService {
   private isConnected: boolean = false;
   private subscriptions: Set<string> = new Set();
   private callbacks: Map<string, Function[]> = new Map();
+  private connectionPromise: Promise<void> | null = null;
 
   constructor() {
     // In production, this should come from environment variables
@@ -206,21 +207,73 @@ class PolygonService {
       return Promise.resolve();
     }
 
-    try {
-      await this.wsClient.connect();
-    } catch (error) {
-      console.error('Failed to connect to Polygon WebSocket:', error);
-      throw error;
+    // If we already have a connection promise, return it
+    if (this.connectionPromise) {
+      return this.connectionPromise;
     }
+
+    // If already connected, resolve immediately
+    if (this.isConnected) {
+      return Promise.resolve();
+    }
+
+    // Create a new connection promise
+    this.connectionPromise = new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('WebSocket connection timeout'));
+      }, 10000); // 10 second timeout
+
+      const originalOnOpen = this.wsClient.onopen;
+      const originalOnError = this.wsClient.onerror;
+
+      this.wsClient.onopen = () => {
+        clearTimeout(timeout);
+        this.isConnected = true;
+        console.log('Polygon WebSocket connected');
+        
+        // Restore original handler
+        this.wsClient.onopen = originalOnOpen;
+        
+        resolve();
+      };
+
+      this.wsClient.onerror = (error: any) => {
+        clearTimeout(timeout);
+        console.error('Polygon WebSocket connection error:', error);
+        
+        // Restore original handler
+        this.wsClient.onerror = originalOnError;
+        
+        reject(error);
+      };
+
+      // The WebSocket client should automatically attempt to connect
+      // If it's not connecting, we might need to trigger it manually
+      try {
+        // Some WebSocket clients require manual connection initiation
+        if (typeof this.wsClient.connect === 'function') {
+          this.wsClient.connect();
+        }
+      } catch (error) {
+        console.warn('WebSocket client does not have a connect method, relying on auto-connection');
+      }
+    });
+
+    return this.connectionPromise;
   }
 
   disconnect(): void {
     if (this.wsClient && this.isConnected) {
-      this.wsClient.disconnect();
+      if (typeof this.wsClient.disconnect === 'function') {
+        this.wsClient.disconnect();
+      } else if (typeof this.wsClient.close === 'function') {
+        this.wsClient.close();
+      }
     }
     this.isConnected = false;
     this.subscriptions.clear();
     this.callbacks.clear();
+    this.connectionPromise = null;
   }
 
   // Subscribe to real-time stock quotes
