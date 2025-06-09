@@ -45,11 +45,15 @@ export interface Strategy {
   id: string;
   name: string;
   description?: string;
-  regime?: 'bullish' | 'bearish' | 'neutral';
+  regime?: 'short-term' | 'medium-term' | 'long-term';
+  marketCondition?: 'bullish' | 'bearish' | 'neutral' | 'volatile';
   legs: StrategyLeg[];
   maxProfit?: number | string;
   maxLoss?: number | string;
   breakEven?: number[];
+  timeDecay?: 'positive' | 'negative' | 'neutral';
+  volatilityBias?: 'long' | 'short' | 'neutral';
+  complexity?: 'beginner' | 'intermediate' | 'advanced';
 }
 
 export interface StrategyLeg {
@@ -86,4 +90,47 @@ export interface User {
   accountValue: number;
   buyingPower: number;
   cashBalance: number;
+}
+
+export interface MarketRegime {
+  type: 'short-term' | 'medium-term' | 'long-term';
+  trend: 'bullish' | 'bearish' | 'neutral';
+  volatility: 'low' | 'medium' | 'high';
+  momentum: number; // -100 to 100
+  confidence: number; // 0 to 100
+  timeframe: string;
+}
+
+export interface StrategyRecommendation {
+  strategy: Strategy;
+  confidence: number;
+  reasoning: string[];
+  optimalEntry: {
+    price: number;
+    impliedVolatility: number;
+    timeToExpiry: number;
+  };
+  riskReward: {
+    maxProfit: number;
+    maxLoss: number;
+    probabilityOfProfit: number;
+  };
+  blackScholesAnalysis: {
+    theoreticalPrice: number;
+    marketPrice: number;
+    edge: number; // positive means underpriced
+    greeks: {
+      delta: number;
+      gamma: number;
+      theta: number;
+      vega: number;
+    };
+  };
+}
+
+export interface RegimeAnalysis {
+  currentRegime: MarketRegime;
+  recommendations: StrategyRecommendation[];
+  marketInsights: string[];
+  riskFactors: string[];
 }
