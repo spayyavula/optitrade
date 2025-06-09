@@ -26,7 +26,7 @@ const Landing: React.FC = () => {
 
   const features = [
     {
-      icon: <BarChart3 className="text-primary-400\" size={24} />,
+      icon: <BarChart3 className="text-primary-400" size={24} />,
       title: "Real-Time Options Chain",
       description: "Live market data powered by Polygon.io with real-time Greeks and implied volatility calculations."
     },
@@ -36,7 +36,7 @@ const Landing: React.FC = () => {
       description: "Advanced AI analyzes market regimes and recommends optimal options strategies based on current conditions."
     },
     {
-      icon: <Target className="text-accent-400\" size={24} />,
+      icon: <Target className="text-accent-400" size={24} />,
       title: "Risk Management Tools",
       description: "Comprehensive portfolio tracking with P&L analysis, position sizing, and risk metrics."
     },
@@ -46,7 +46,7 @@ const Landing: React.FC = () => {
       description: "Identify arbitrage opportunities and mispriced options using Black-Scholes analysis."
     },
     {
-      icon: <Award className="text-warning-400\" size={24} />,
+      icon: <Award className="text-warning-400" size={24} />,
       title: "Educational Platform",
       description: "Learn options trading through interactive lessons, challenges, and company-sponsored tournaments."
     },
