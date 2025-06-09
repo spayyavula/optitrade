@@ -247,16 +247,8 @@ class PolygonService {
         reject(error);
       };
 
-      // The WebSocket client should automatically attempt to connect
-      // If it's not connecting, we might need to trigger it manually
-      try {
-        // Some WebSocket clients require manual connection initiation
-        if (typeof this.wsClient.connect === 'function') {
-          this.wsClient.connect();
-        }
-      } catch (error) {
-        console.warn('WebSocket client does not have a connect method, relying on auto-connection');
-      }
+      // Always explicitly initiate the WebSocket connection
+      this.wsClient.connect();
     });
 
     return this.connectionPromise;
