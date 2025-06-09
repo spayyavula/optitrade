@@ -38,6 +38,8 @@ class PolygonService {
   private connectionPromise: Promise<void> | null = null;
   private resolveConnection: (() => void) | null = null;
   private rejectConnection: ((error: any) => void) | null = null;
+  private isMarketHours: boolean = false;
+  private marketHoursCheckInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     // In production, this should come from environment variables
@@ -47,6 +49,46 @@ class PolygonService {
       console.warn('Using demo Polygon.io key. Real-time data will be simulated.');
       this.initializeMockService();
     } else {
+      this.checkMarketHours();
+      this.initializePolygonClients();
+    }
+
+    // Check market hours every 5 minutes
+    this.marketHoursCheckInterval = setInterval(() => {
+      this.checkMarketHours();
+    }, 5 * 60 * 1000);
+  }
+
+  private checkMarketHours(): void {
+    const now = new Date();
+    const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    const day = easternTime.getDay(); // 0 = Sunday, 6 = Saturday
+    const hour = easternTime.getHours();
+    const minute = easternTime.getMinutes();
+    const timeInMinutes = hour * 60 + minute;
+
+    // Market hours: Monday-Friday 9:30 AM - 4:00 PM ET
+    // Pre-market: 4:00 AM - 9:30 AM ET
+    // After-hours: 4:00 PM - 8:00 PM ET
+    const isWeekday = day >= 1 && day <= 5;
+    const marketOpen = 9 * 60 + 30; // 9:30 AM
+    const marketClose = 16 * 60; // 4:00 PM
+    const preMarketStart = 4 * 60; // 4:00 AM
+    const afterHoursEnd = 20 * 60; // 8:00 PM
+
+    const wasMarketHours = this.isMarketHours;
+    this.isMarketHours = isWeekday && timeInMinutes >= marketOpen && timeInMinutes < marketClose;
+    
+    const isExtendedHours = isWeekday && (
+      (timeInMinutes >= preMarketStart && timeInMinutes < marketOpen) ||
+      (timeInMinutes >= marketClose && timeInMinutes < afterHoursEnd)
+    );
+
+    console.log(`Market status check: ${this.isMarketHours ? 'Regular hours' : isExtendedHours ? 'Extended hours' : 'Market closed'}`);
+
+    // If market just opened, try to reconnect
+    if (!wasMarketHours && this.isMarketHours && this.apiKey !== 'demo_key') {
+      console.log('Market opened - attempting to establish WebSocket connection');
       this.initializePolygonClients();
     }
   }
@@ -54,41 +96,51 @@ class PolygonService {
   private initializePolygonClients() {
     try {
       this.restClient = restClient(this.apiKey);
-      this.wsClient = websocketClient(this.apiKey);
       
-      this.wsClient.onopen = () => {
-        console.log('Polygon WebSocket connected');
-        this.isConnected = true;
+      // Only initialize WebSocket during market hours or extended hours
+      if (this.shouldUseWebSocket()) {
+        this.wsClient = websocketClient(this.apiKey);
         
-        // Resolve any pending connection promise
-        if (this.resolveConnection) {
-          this.resolveConnection();
-          this.resolveConnection = null;
-          this.rejectConnection = null;
-        }
-      };
+        this.wsClient.onopen = () => {
+          console.log('Polygon WebSocket connected');
+          this.isConnected = true;
+          
+          // Resolve any pending connection promise
+          if (this.resolveConnection) {
+            this.resolveConnection();
+            this.resolveConnection = null;
+            this.rejectConnection = null;
+          }
+        };
 
-      this.wsClient.onclose = () => {
-        console.log('Polygon WebSocket disconnected');
-        this.isConnected = false;
-        // Attempt to reconnect after 5 seconds
-        setTimeout(() => this.connect(), 5000);
-      };
+        this.wsClient.onclose = () => {
+          console.log('Polygon WebSocket disconnected');
+          this.isConnected = false;
+          
+          // Only attempt to reconnect during market hours
+          if (this.shouldUseWebSocket()) {
+            setTimeout(() => this.connect(), 5000);
+          }
+        };
 
-      this.wsClient.onerror = (error: any) => {
-        console.error('Polygon WebSocket error:', error);
-        
-        // Reject any pending connection promise
-        if (this.rejectConnection) {
-          this.rejectConnection(error);
-          this.resolveConnection = null;
-          this.rejectConnection = null;
-        }
-      };
+        this.wsClient.onerror = (error: any) => {
+          console.error('Polygon WebSocket error:', error);
+          
+          // Reject any pending connection promise
+          if (this.rejectConnection) {
+            this.rejectConnection(error);
+            this.resolveConnection = null;
+            this.rejectConnection = null;
+          }
+        };
 
-      this.wsClient.onmessage = (message: any) => {
-        this.handleWebSocketMessage(message);
-      };
+        this.wsClient.onmessage = (message: any) => {
+          this.handleWebSocketMessage(message);
+        };
+      } else {
+        console.log('Market closed - using REST API and simulated data');
+        this.initializeMockService();
+      }
 
     } catch (error) {
       console.error('Failed to initialize Polygon clients:', error);
@@ -96,14 +148,31 @@ class PolygonService {
     }
   }
 
+  private shouldUseWebSocket(): boolean {
+    const now = new Date();
+    const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    const day = easternTime.getDay();
+    const hour = easternTime.getHours();
+    const minute = easternTime.getMinutes();
+    const timeInMinutes = hour * 60 + minute;
+
+    // Allow WebSocket during weekdays from 4 AM to 8 PM ET
+    const isWeekday = day >= 1 && day <= 5;
+    const extendedStart = 4 * 60; // 4:00 AM
+    const extendedEnd = 20 * 60; // 8:00 PM
+
+    return isWeekday && timeInMinutes >= extendedStart && timeInMinutes < extendedEnd;
+  }
+
   private initializeMockService() {
-    console.log('Initializing mock Polygon service for demo purposes');
+    console.log('Initializing mock Polygon service');
     this.isConnected = true;
     
-    // Simulate real-time updates every 1-3 seconds
+    // Simulate real-time updates every 2-5 seconds when market is closed
+    const updateInterval = this.isMarketHours ? 1000 : 3000;
     setInterval(() => {
       this.simulateMarketData();
-    }, Math.random() * 2000 + 1000);
+    }, updateInterval + Math.random() * 2000);
   }
 
   private simulateMarketData() {
@@ -111,28 +180,36 @@ class PolygonService {
     const stocks = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'AMZN'];
     stocks.forEach(symbol => {
       if (this.subscriptions.has(`Q.${symbol}`)) {
+        // Use more realistic price movements during market hours
+        const volatility = this.isMarketHours ? 0.002 : 0.0005; // Lower volatility when market is closed
+        const basePrice = 175;
+        const priceChange = (Math.random() - 0.5) * volatility * basePrice;
+        
         const mockQuote: PolygonQuote = {
           symbol,
-          bid: 175 + Math.random() * 10 - 5,
-          ask: 175 + Math.random() * 10 - 4.5,
-          last: 175 + Math.random() * 10 - 4.75,
-          volume: Math.floor(Math.random() * 1000000),
+          bid: basePrice + priceChange - 0.05,
+          ask: basePrice + priceChange + 0.05,
+          last: basePrice + priceChange,
+          volume: Math.floor(Math.random() * (this.isMarketHours ? 1000000 : 100000)),
           timestamp: Date.now()
         };
         this.notifyCallbacks(`quote.${symbol}`, mockQuote);
       }
     });
 
-    // Simulate option quotes
+    // Simulate option quotes with market-appropriate activity
     this.subscriptions.forEach(sub => {
       if (sub.startsWith('O:')) {
         const symbol = sub.split(':')[1];
+        const basePrice = Math.random() * 10;
+        const spread = this.isMarketHours ? 0.05 : 0.10; // Wider spreads when market is closed
+        
         const mockOptionQuote: PolygonOptionQuote = {
           symbol,
-          bid: Math.random() * 10,
-          ask: Math.random() * 10 + 0.5,
-          last: Math.random() * 10 + 0.25,
-          volume: Math.floor(Math.random() * 10000),
+          bid: basePrice - spread,
+          ask: basePrice + spread,
+          last: basePrice,
+          volume: Math.floor(Math.random() * (this.isMarketHours ? 10000 : 1000)),
           timestamp: Date.now(),
           strike: 175,
           expiration: '2025-01-17',
@@ -219,7 +296,8 @@ class PolygonService {
 
   // Public API methods
   async connect(): Promise<void> {
-    if (this.apiKey === 'demo_key') {
+    if (this.apiKey === 'demo_key' || !this.shouldUseWebSocket()) {
+      console.log('Using mock service - no WebSocket connection needed');
       return Promise.resolve();
     }
 
@@ -239,14 +317,23 @@ class PolygonService {
       this.resolveConnection = resolve;
       this.rejectConnection = reject;
 
-      // Set a timeout for the connection
+      // Set a shorter timeout during market hours, longer when market is closed
+      const timeoutDuration = this.isMarketHours ? 5000 : 15000;
       const timeout = setTimeout(() => {
         if (this.rejectConnection) {
-          this.rejectConnection(new Error('WebSocket connection timeout'));
+          const message = this.isMarketHours 
+            ? 'WebSocket connection timeout during market hours'
+            : 'WebSocket connection timeout - market may be closed, falling back to simulated data';
+          
+          console.warn(message);
+          this.rejectConnection(new Error(message));
           this.resolveConnection = null;
           this.rejectConnection = null;
+          
+          // Fall back to mock service if connection fails
+          this.initializeMockService();
         }
-      }, 10000); // 10 second timeout
+      }, timeoutDuration);
 
       // Clear timeout if connection succeeds or fails
       const originalResolve = this.resolveConnection;
@@ -281,6 +368,12 @@ class PolygonService {
         this.wsClient.close();
       }
     }
+    
+    if (this.marketHoursCheckInterval) {
+      clearInterval(this.marketHoursCheckInterval);
+      this.marketHoursCheckInterval = null;
+    }
+    
     this.isConnected = false;
     this.subscriptions.clear();
     this.callbacks.clear();
@@ -374,12 +467,16 @@ class PolygonService {
   // REST API methods for historical data
   async getStockQuote(symbol: string): Promise<PolygonQuote | null> {
     if (this.apiKey === 'demo_key') {
+      const basePrice = 175;
+      const volatility = this.isMarketHours ? 0.002 : 0.0005;
+      const priceChange = (Math.random() - 0.5) * volatility * basePrice;
+      
       return {
         symbol,
-        bid: 175 + Math.random() * 10 - 5,
-        ask: 175 + Math.random() * 10 - 4.5,
-        last: 175 + Math.random() * 10 - 4.75,
-        volume: Math.floor(Math.random() * 1000000),
+        bid: basePrice + priceChange - 0.05,
+        ask: basePrice + priceChange + 0.05,
+        last: basePrice + priceChange,
+        volume: Math.floor(Math.random() * (this.isMarketHours ? 1000000 : 100000)),
         timestamp: Date.now()
       };
     }
@@ -408,14 +505,16 @@ class PolygonService {
       
       for (let i = -5; i <= 5; i++) {
         const strike = basePrice + i * 5;
+        const spread = this.isMarketHours ? 0.05 : 0.10;
         
         // Call option
+        const callPrice = Math.random() * 5;
         options.push({
           symbol: `O:${symbol}${expiration?.replace(/-/g, '')}C${strike.toString().padStart(8, '0')}`,
-          bid: Math.random() * 5,
-          ask: Math.random() * 5 + 0.5,
-          last: Math.random() * 5 + 0.25,
-          volume: Math.floor(Math.random() * 1000),
+          bid: callPrice - spread,
+          ask: callPrice + spread,
+          last: callPrice,
+          volume: Math.floor(Math.random() * (this.isMarketHours ? 1000 : 100)),
           timestamp: Date.now(),
           strike,
           expiration: expiration || '2025-01-17',
@@ -428,12 +527,13 @@ class PolygonService {
         });
 
         // Put option
+        const putPrice = Math.random() * 5;
         options.push({
           symbol: `O:${symbol}${expiration?.replace(/-/g, '')}P${strike.toString().padStart(8, '0')}`,
-          bid: Math.random() * 5,
-          ask: Math.random() * 5 + 0.5,
-          last: Math.random() * 5 + 0.25,
-          volume: Math.floor(Math.random() * 1000),
+          bid: putPrice - spread,
+          ask: putPrice + spread,
+          last: putPrice,
+          volume: Math.floor(Math.random() * (this.isMarketHours ? 1000 : 100)),
           timestamp: Date.now(),
           strike,
           expiration: expiration || '2025-01-17',
@@ -531,6 +631,34 @@ class PolygonService {
 
   getSubscriptionCount(): number {
     return this.subscriptions.size;
+  }
+
+  // Market status
+  getMarketStatus(): { isMarketHours: boolean; isExtendedHours: boolean; status: string } {
+    const now = new Date();
+    const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    const day = easternTime.getDay();
+    const hour = easternTime.getHours();
+    const minute = easternTime.getMinutes();
+    const timeInMinutes = hour * 60 + minute;
+
+    const isWeekday = day >= 1 && day <= 5;
+    const marketOpen = 9 * 60 + 30; // 9:30 AM
+    const marketClose = 16 * 60; // 4:00 PM
+    const preMarketStart = 4 * 60; // 4:00 AM
+    const afterHoursEnd = 20 * 60; // 8:00 PM
+
+    const isMarketHours = isWeekday && timeInMinutes >= marketOpen && timeInMinutes < marketClose;
+    const isExtendedHours = isWeekday && (
+      (timeInMinutes >= preMarketStart && timeInMinutes < marketOpen) ||
+      (timeInMinutes >= marketClose && timeInMinutes < afterHoursEnd)
+    );
+
+    let status = 'Market Closed';
+    if (isMarketHours) status = 'Market Open';
+    else if (isExtendedHours) status = 'Extended Hours';
+
+    return { isMarketHours, isExtendedHours, status };
   }
 }
 
