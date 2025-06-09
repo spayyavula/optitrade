@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { polygonService, PolygonQuote, PolygonOptionQuote } from '../services/polygonService';
+import { format, subDays } from 'date-fns';
 
 export interface UsePolygonDataOptions {
   symbol: string;
@@ -13,6 +14,7 @@ export interface PolygonDataState {
   loading: boolean;
   error: string | null;
   lastUpdate: Date | null;
+  lastEODPrice: number | null;
 }
 
 export const usePolygonData = ({ symbol, autoSubscribe = true, includeOptions = false }: UsePolygonDataOptions) => {
@@ -21,7 +23,8 @@ export const usePolygonData = ({ symbol, autoSubscribe = true, includeOptions = 
     options: [],
     loading: true,
     error: null,
-    lastUpdate: null
+    lastUpdate: null,
+    lastEODPrice: null
   });
 
   const updateQuote = useCallback((newQuote: PolygonQuote) => {
@@ -54,6 +57,23 @@ export const usePolygonData = ({ symbol, autoSubscribe = true, includeOptions = 
       const quote = await polygonService.getStockQuote(symbol);
       if (quote) {
         setState(prev => ({ ...prev, quote, lastUpdate: new Date() }));
+      }
+
+      // Check market status and fetch EOD price if market is closed
+      const marketStatus = await polygonService.getMarketStatus();
+      if (marketStatus.status === 'closed' || !quote) {
+        try {
+          // Get yesterday's date for historical data
+          const yesterday = subDays(new Date(), 1);
+          const historicalData = await polygonService.getHistoricalData(symbol, format(yesterday, 'yyyy-MM-dd'));
+          
+          if (historicalData && historicalData.length > 0) {
+            const lastClose = historicalData[historicalData.length - 1].close;
+            setState(prev => ({ ...prev, lastEODPrice: lastClose }));
+          }
+        } catch (histError) {
+          console.warn('Could not fetch historical data:', histError);
+        }
       }
 
       // Fetch options chain if requested
