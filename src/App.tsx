@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/common/Layout';
 import DisclaimerModal from './components/common/DisclaimerModal';
+import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import OptionsChain from './pages/OptionsChain';
 import Portfolio from './pages/Portfolio';
@@ -15,6 +16,7 @@ function App() {
   console.log('React version:', React.version);
   
   const [hasAcceptedDisclaimer, setHasAcceptedDisclaimer] = useState(false);
+  const [showLanding, setShowLanding] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -22,33 +24,46 @@ function App() {
     console.log('App useEffect running...');
     console.log('localStorage available:', typeof Storage !== 'undefined');
     
-    // Check disclaimer status
+    // Check if user has seen landing page
     try {
-      console.log('Checking disclaimer status...');
+      console.log('Checking landing and disclaimer status...');
       
       if (typeof Storage === 'undefined') {
-        console.warn('localStorage not available, proceeding without disclaimer check');
+        console.warn('localStorage not available, proceeding without checks');
+        setShowLanding(true);
         setHasAcceptedDisclaimer(false);
         setIsLoading(false);
         return;
       }
       
+      const hasSeenLanding = localStorage.getItem('optionsworld-seen-landing');
       const disclaimerAccepted = localStorage.getItem('optionsworld-disclaimer-accepted');
       const disclaimerDate = localStorage.getItem('optionsworld-disclaimer-date');
       
+      console.log('Has seen landing:', hasSeenLanding);
       console.log('Disclaimer accepted:', disclaimerAccepted);
       console.log('Disclaimer date:', disclaimerDate);
       
-      if (disclaimerAccepted === 'true') {
-        console.log('Disclaimer previously accepted, proceeding to app');
-        setHasAcceptedDisclaimer(true);
+      // Check URL to see if user is trying to access app directly
+      const isDirectAppAccess = window.location.pathname !== '/' && window.location.pathname !== '/landing';
+      
+      if (hasSeenLanding === 'true' || isDirectAppAccess) {
+        setShowLanding(false);
+        if (disclaimerAccepted === 'true') {
+          console.log('User has seen landing and accepted disclaimer, proceeding to app');
+          setHasAcceptedDisclaimer(true);
+        } else {
+          console.log('User has seen landing but not accepted disclaimer, showing modal');
+          setHasAcceptedDisclaimer(false);
+        }
       } else {
-        console.log('Disclaimer not accepted, showing modal');
+        console.log('First time user, showing landing page');
+        setShowLanding(true);
         setHasAcceptedDisclaimer(false);
       }
     } catch (err) {
-      console.error('Error checking disclaimer status:', err);
-      setError('Failed to check disclaimer status');
+      console.error('Error checking status:', err);
+      setError('Failed to check application status');
     } finally {
       setIsLoading(false);
       console.log('App initialization completed');
@@ -75,6 +90,23 @@ function App() {
       setError('Failed to save disclaimer acceptance');
     }
     console.log('============================');
+  };
+
+  const handleEnterApp = () => {
+    console.log('=== ENTERING APP FROM LANDING ===');
+    try {
+      setShowLanding(false);
+      
+      if (typeof Storage !== 'undefined') {
+        localStorage.setItem('optionsworld-seen-landing', 'true');
+        console.log('Landing page visit saved to localStorage');
+      }
+      
+      console.log('Transitioning from landing to app');
+    } catch (err) {
+      console.error('Error saving landing page visit:', err);
+    }
+    console.log('================================');
   };
 
   // Loading state
@@ -111,7 +143,20 @@ function App() {
   }
 
   console.log('App rendering main content...');
+  console.log('Show landing:', showLanding);
   console.log('Has accepted disclaimer:', hasAcceptedDisclaimer);
+
+  // Show landing page for new users
+  if (showLanding) {
+    console.log('Showing landing page');
+    return (
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="*" element={<Landing />} />
+        </Routes>
+      </Router>
+    );
+  }
 
   // Show disclaimer modal if not accepted
   if (!hasAcceptedDisclaimer) {
@@ -132,6 +177,7 @@ function App() {
     <div className="min-h-screen bg-neutral-900">
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
+          <Route path="/landing" element={<Landing />} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="options-chain" element={<OptionsChain />} />
