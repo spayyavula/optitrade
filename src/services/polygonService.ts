@@ -40,6 +40,7 @@ class PolygonService {
   private rejectConnection: ((error: any) => void) | null = null;
   private isMarketHours: boolean = false;
   private marketHoursCheckInterval: NodeJS.Timeout | null = null;
+  private isMockMode: boolean = false;
 
   constructor() {
     // In production, this should come from environment variables
@@ -47,6 +48,7 @@ class PolygonService {
     
     if (this.apiKey === 'demo_key') {
       console.warn('Using demo Polygon.io key. Real-time data will be simulated.');
+      this.isMockMode = true;
       this.initializeMockService();
     } else {
       this.checkMarketHours();
@@ -86,8 +88,8 @@ class PolygonService {
 
     console.log(`Market status check: ${this.isMarketHours ? 'Regular hours' : isExtendedHours ? 'Extended hours' : 'Market closed'}`);
 
-    // If market just opened, try to reconnect
-    if (!wasMarketHours && this.isMarketHours && this.apiKey !== 'demo_key') {
+    // If market just opened, try to reconnect (only if not in mock mode)
+    if (!wasMarketHours && this.isMarketHours && !this.isMockMode) {
       console.log('Market opened - attempting to establish WebSocket connection');
       this.initializePolygonClients();
     }
@@ -97,8 +99,8 @@ class PolygonService {
     try {
       this.restClient = restClient(this.apiKey);
       
-      // Only initialize WebSocket during market hours or extended hours
-      if (this.shouldUseWebSocket()) {
+      // Only initialize WebSocket during market hours or extended hours and not in mock mode
+      if (this.shouldUseWebSocket() && !this.isMockMode) {
         this.wsClient = websocketClient(this.apiKey);
         
         this.wsClient.onopen = () => {
@@ -117,14 +119,19 @@ class PolygonService {
           console.log('Polygon WebSocket disconnected');
           this.isConnected = false;
           
-          // Only attempt to reconnect during market hours
-          if (this.shouldUseWebSocket()) {
+          // Only attempt to reconnect during market hours and not in mock mode
+          if (this.shouldUseWebSocket() && !this.isMockMode) {
             setTimeout(() => this.connect(), 5000);
           }
         };
 
         this.wsClient.onerror = (error: any) => {
           console.error('Polygon WebSocket error:', error);
+          
+          // Switch to mock mode on WebSocket error
+          console.warn('WebSocket error encountered, switching to mock mode');
+          this.isMockMode = true;
+          this.initializeMockService();
           
           // Reject any pending connection promise
           if (this.rejectConnection) {
@@ -138,13 +145,17 @@ class PolygonService {
           this.handleWebSocketMessage(message);
         };
       } else {
-        console.log('Market closed - using REST API and simulated data');
+        console.log('Market closed or mock mode - using REST API and simulated data');
         this.wsClient = null; // Explicitly set to null
-        this.initializeMockService();
+        if (this.isMockMode) {
+          this.initializeMockService();
+        }
       }
 
     } catch (error) {
       console.error('Failed to initialize Polygon clients:', error);
+      console.warn('Switching to mock mode due to client initialization failure');
+      this.isMockMode = true;
       this.wsClient = null; // Explicitly set to null on error
       this.initializeMockService();
     }
@@ -299,7 +310,7 @@ class PolygonService {
 
   // Public API methods
   async connect(): Promise<void> {
-    if (this.apiKey === 'demo_key' || !this.shouldUseWebSocket()) {
+    if (this.isMockMode || !this.shouldUseWebSocket()) {
       console.log('Using mock service - no WebSocket connection needed');
       return Promise.resolve();
     }
@@ -334,6 +345,7 @@ class PolygonService {
           this.rejectConnection = null;
           
           // Fall back to mock service if connection fails
+          this.isMockMode = true;
           this.initializeMockService();
         }
       }, timeoutDuration);
@@ -400,8 +412,8 @@ class PolygonService {
       }
       this.callbacks.get(eventKey)!.push(callback);
 
-      // Subscribe via WebSocket if connected and wsClient is valid
-      if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key' && typeof this.wsClient.send === 'function') {
+      // Subscribe via WebSocket if connected and wsClient is valid and not in mock mode
+      if (this.isConnected && this.wsClient && !this.isMockMode && typeof this.wsClient.send === 'function') {
         this.wsClient.send(JSON.stringify({
           action: 'subscribe',
           params: subscription
@@ -422,8 +434,8 @@ class PolygonService {
       }
       this.callbacks.get(eventKey)!.push(callback);
 
-      // Subscribe via WebSocket if connected and wsClient is valid
-      if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key' && typeof this.wsClient.send === 'function') {
+      // Subscribe via WebSocket if connected and wsClient is valid and not in mock mode
+      if (this.isConnected && this.wsClient && !this.isMockMode && typeof this.wsClient.send === 'function') {
         this.wsClient.send(JSON.stringify({
           action: 'subscribe',
           params: subscription
@@ -444,8 +456,8 @@ class PolygonService {
       }
       this.callbacks.get(eventKey)!.push(callback);
 
-      // Subscribe via WebSocket if connected and wsClient is valid
-      if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key' && typeof this.wsClient.send === 'function') {
+      // Subscribe via WebSocket if connected and wsClient is valid and not in mock mode
+      if (this.isConnected && this.wsClient && !this.isMockMode && typeof this.wsClient.send === 'function') {
         this.wsClient.send(JSON.stringify({
           action: 'subscribe',
           params: subscription
@@ -462,7 +474,7 @@ class PolygonService {
     this.subscriptions.delete(subscription);
     this.callbacks.delete(`${type}.${symbol}`);
 
-    if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key' && typeof this.wsClient.send === 'function') {
+    if (this.isConnected && this.wsClient && !this.isMockMode && typeof this.wsClient.send === 'function') {
       this.wsClient.send(JSON.stringify({
         action: 'unsubscribe',
         params: subscription
@@ -472,7 +484,7 @@ class PolygonService {
 
   // REST API methods for historical data
   async getStockQuote(symbol: string): Promise<PolygonQuote | null> {
-    if (this.apiKey === 'demo_key') {
+    if (this.isMockMode) {
       const basePrice = 175;
       const volatility = this.isMarketHours ? 0.002 : 0.0005;
       const priceChange = (Math.random() - 0.5) * volatility * basePrice;
@@ -499,12 +511,17 @@ class PolygonService {
       };
     } catch (error) {
       console.error(`Error fetching quote for ${symbol}:`, error);
-      return null;
+      console.warn('Switching to mock mode due to API error');
+      this.isMockMode = true;
+      this.initializeMockService();
+      
+      // Recursively call with mock mode enabled
+      return this.getStockQuote(symbol);
     }
   }
 
   async getOptionsChain(symbol: string, expiration?: string): Promise<PolygonOptionQuote[]> {
-    if (this.apiKey === 'demo_key') {
+    if (this.isMockMode) {
       // Return mock options chain
       const options: PolygonOptionQuote[] = [];
       const basePrice = 175;
@@ -556,6 +573,11 @@ class PolygonService {
     }
 
     try {
+      // Check if the options method exists
+      if (!this.restClient.options || typeof this.restClient.options.listContracts !== 'function') {
+        throw new Error('Options API not available or method does not exist');
+      }
+
       const params: any = {
         'underlying_ticker': symbol,
         limit: 1000
@@ -585,12 +607,17 @@ class PolygonService {
       })) || [];
     } catch (error) {
       console.error(`Error fetching options chain for ${symbol}:`, error);
-      return [];
+      console.warn('Switching to mock mode due to options API error');
+      this.isMockMode = true;
+      this.initializeMockService();
+      
+      // Recursively call with mock mode enabled
+      return this.getOptionsChain(symbol, expiration);
     }
   }
 
   async getHistoricalData(symbol: string, from: string, to: string): Promise<any[]> {
-    if (this.apiKey === 'demo_key') {
+    if (this.isMockMode) {
       // Return mock historical data
       const data = [];
       const start = new Date(from);
@@ -626,7 +653,12 @@ class PolygonService {
       })) || [];
     } catch (error) {
       console.error(`Error fetching historical data for ${symbol}:`, error);
-      return [];
+      console.warn('Switching to mock mode due to historical data API error');
+      this.isMockMode = true;
+      this.initializeMockService();
+      
+      // Recursively call with mock mode enabled
+      return this.getHistoricalData(symbol, from, to);
     }
   }
 
@@ -665,6 +697,11 @@ class PolygonService {
     else if (isExtendedHours) status = 'Extended Hours';
 
     return { isMarketHours, isExtendedHours, status };
+  }
+
+  // Check if service is in mock mode
+  isMockModeEnabled(): boolean {
+    return this.isMockMode;
   }
 }
 
