@@ -62,14 +62,40 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
         
       } catch (error) {
         console.error('Failed to connect to Polygon.io:', error);
-        setIsConnected(false);
-        setConnectionStatus('error');
         
-        // Retry connection after 10 seconds
-        reconnectTimeout = setTimeout(() => {
-          console.log('Retrying Polygon.io connection...');
-          connectToPolygon();
-        }, 10000);
+        // Check if the service has fallen back to simulated data
+        const isServiceConnected = polygonService.isConnectedToStream();
+        
+        if (isServiceConnected) {
+          // Successfully using simulated data
+          setIsConnected(true);
+          setConnectionStatus('connected');
+          setLastUpdate(new Date());
+          console.log('Using simulated data after WebSocket connection timeout');
+          
+          // Subscribe to some default symbols for demo with simulated data
+          const defaultSymbols = ['AAPL', 'MSFT', 'GOOGL', 'TSLA'];
+          polygonService.subscribeToQuotes(defaultSymbols, (quote) => {
+            console.log('Received simulated quote update:', quote);
+            setLastUpdate(new Date());
+          });
+          
+          // Subscribe to AAPL options for demo with simulated data
+          polygonService.subscribeToOptionQuotes(['AAPL'], (optionQuote) => {
+            console.log('Received simulated option quote update:', optionQuote);
+            setLastUpdate(new Date());
+          });
+        } else {
+          // Complete failure
+          setIsConnected(false);
+          setConnectionStatus('error');
+          
+          // Retry connection after 10 seconds
+          reconnectTimeout = setTimeout(() => {
+            console.log('Retrying Polygon.io connection...');
+            connectToPolygon();
+          }, 10000);
+        }
       }
     };
 
