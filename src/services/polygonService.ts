@@ -30,7 +30,7 @@ export interface PolygonTrade {
 
 class PolygonService {
   private restClient: any;
-  private wsClient: any;
+  private wsClient: any = null;
   private apiKey: string;
   private isConnected: boolean = false;
   private subscriptions: Set<string> = new Set();
@@ -139,11 +139,13 @@ class PolygonService {
         };
       } else {
         console.log('Market closed - using REST API and simulated data');
+        this.wsClient = null; // Explicitly set to null
         this.initializeMockService();
       }
 
     } catch (error) {
       console.error('Failed to initialize Polygon clients:', error);
+      this.wsClient = null; // Explicitly set to null on error
       this.initializeMockService();
     }
   }
@@ -166,6 +168,7 @@ class PolygonService {
 
   private initializeMockService() {
     console.log('Initializing mock Polygon service');
+    this.wsClient = null; // Explicitly set to null when using mock service
     this.isConnected = true;
     
     // Simulate real-time updates every 2-5 seconds when market is closed
@@ -369,6 +372,9 @@ class PolygonService {
       }
     }
     
+    // Explicitly set wsClient to null
+    this.wsClient = null;
+    
     if (this.marketHoursCheckInterval) {
       clearInterval(this.marketHoursCheckInterval);
       this.marketHoursCheckInterval = null;
@@ -394,8 +400,8 @@ class PolygonService {
       }
       this.callbacks.get(eventKey)!.push(callback);
 
-      // Subscribe via WebSocket if connected
-      if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key') {
+      // Subscribe via WebSocket if connected and wsClient is valid
+      if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key' && typeof this.wsClient.send === 'function') {
         this.wsClient.send(JSON.stringify({
           action: 'subscribe',
           params: subscription
@@ -416,8 +422,8 @@ class PolygonService {
       }
       this.callbacks.get(eventKey)!.push(callback);
 
-      // Subscribe via WebSocket if connected
-      if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key') {
+      // Subscribe via WebSocket if connected and wsClient is valid
+      if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key' && typeof this.wsClient.send === 'function') {
         this.wsClient.send(JSON.stringify({
           action: 'subscribe',
           params: subscription
@@ -438,8 +444,8 @@ class PolygonService {
       }
       this.callbacks.get(eventKey)!.push(callback);
 
-      // Subscribe via WebSocket if connected
-      if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key') {
+      // Subscribe via WebSocket if connected and wsClient is valid
+      if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key' && typeof this.wsClient.send === 'function') {
         this.wsClient.send(JSON.stringify({
           action: 'subscribe',
           params: subscription
@@ -456,7 +462,7 @@ class PolygonService {
     this.subscriptions.delete(subscription);
     this.callbacks.delete(`${type}.${symbol}`);
 
-    if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key') {
+    if (this.isConnected && this.wsClient && this.apiKey !== 'demo_key' && typeof this.wsClient.send === 'function') {
       this.wsClient.send(JSON.stringify({
         action: 'unsubscribe',
         params: subscription
