@@ -107,7 +107,7 @@ const TrialSignupForm: React.FC<TrialSignupFormProps> = ({
       {error && (
         <div className="bg-error-900/20 border border-error-700/30 p-4 rounded-lg">
           <div className="flex items-center">
-            <AlertCircle className="text-error-400 mr-2" size={20} />
+            <AlertCircle className="text-error-400 mr-2\" size={20} />
             <span className="text-error-300">{error}</span>
           </div>
         </div>
