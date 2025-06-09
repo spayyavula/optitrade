@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Stock, Option } from '../../types';
 import { polygonService, PolygonQuote, PolygonOptionQuote } from '../../services/polygonService';
+import { useSupabaseData } from '../../hooks/useSupabaseData';
 
 interface RealTimeDataContextType {
   isConnected: boolean;
@@ -25,7 +26,7 @@ interface RealTimeDataProviderProps {
 }
 
 export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ children }) => {
-  console.log('RealTimeDataProvider rendering with Polygon.io integration');
+  console.log('RealTimeDataProvider rendering with Polygon.io and Supabase integration');
   
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -35,8 +36,11 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
   const [isSimulatedData, setIsSimulatedData] = useState(false);
   const [lastEODPrice, setLastEODPrice] = useState<number | null>(null);
 
+  // Initialize Supabase integration
+  const { storeQuote, updateConnectionStatus } = useSupabaseData({ autoStore: true });
+
   useEffect(() => {
-    console.log('RealTimeDataProvider useEffect starting - connecting to Polygon.io');
+    console.log('RealTimeDataProvider useEffect starting - connecting to Polygon.io with Supabase tracking');
     
     let reconnectTimeout: NodeJS.Timeout;
     let statusCheckInterval: NodeJS.Timeout;
@@ -48,18 +52,25 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
         setIsSimulatedData(false);
         console.log('Connecting to Polygon.io WebSocket...');
         
+        // Update Supabase with connection attempt
+        await updateConnectionStatus('polygon_io', 'connecting');
+        
         await polygonService.connect();
         
         // Check if we have a real WebSocket connection
         const isRealConnection = polygonService.isConnectedToStream();
+        const isMockMode = polygonService.isMockModeEnabled();
         
-        if (isRealConnection) {
+        if (isRealConnection && !isMockMode) {
           setIsConnected(true);
           setConnectionStatus('connected');
           setIsLiveConnection(true);
           setIsSimulatedData(false);
           setLastUpdate(new Date());
           console.log('Successfully connected to Polygon.io live stream');
+          
+          // Update Supabase with successful connection
+          await updateConnectionStatus('polygon_io', 'connected');
         } else {
           // We're using simulated data
           setIsConnected(true);
@@ -68,26 +79,46 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
           setIsSimulatedData(true);
           setLastUpdate(new Date());
           console.log('Using simulated data - WebSocket connection failed or market closed');
+          
+          // Update Supabase with simulated status
+          await updateConnectionStatus('simulated_realtime', 'simulated');
         }
         
         // Subscribe to some default symbols for demo
         const defaultSymbols = ['AAPL', 'MSFT', 'GOOGL', 'TSLA'];
-        polygonService.subscribeToQuotes(defaultSymbols, (quote) => {
+        polygonService.subscribeToQuotes(defaultSymbols, async (quote) => {
           console.log('Received quote update:', quote);
           setLastUpdate(new Date());
+          
+          // Store quote in Supabase with proper data source tracking
+          const dataSourceName = isMockMode ? 'simulated_realtime' : 'polygon_io';
+          await storeQuote(
+            quote.symbol,
+            {
+              bid: quote.bid,
+              ask: quote.ask,
+              last_price: quote.last,
+              volume: quote.volume
+            },
+            dataSourceName,
+            isMockMode,
+            !isMockMode
+          );
         });
         
         // Subscribe to AAPL options for demo
         polygonService.subscribeToOptionQuotes(['AAPL'], (optionQuote) => {
           console.log('Received option quote update:', optionQuote);
           setLastUpdate(new Date());
+          // Note: Option quotes would also be stored in Supabase in a production system
         });
         
       } catch (error) {
         // Check if the service has fallen back to simulated data
         const isServiceConnected = polygonService.isConnectedToStream();
+        const isMockMode = polygonService.isMockModeEnabled();
         
-        if (isServiceConnected) {
+        if (isServiceConnected || isMockMode) {
           // Successfully using simulated data - this is not an error, just a fallback
           console.info('Market is closed or WebSocket connection timed out - using simulated data for demonstration');
           setIsConnected(true);
@@ -96,11 +127,31 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
           setIsSimulatedData(true);
           setLastUpdate(new Date());
           
+          // Update Supabase with simulated status
+          await updateConnectionStatus('simulated_realtime', 'simulated', {
+            reason: 'Market closed or connection timeout',
+            fallback_mode: true
+          });
+          
           // Subscribe to some default symbols for demo with simulated data
           const defaultSymbols = ['AAPL', 'MSFT', 'GOOGL', 'TSLA'];
-          polygonService.subscribeToQuotes(defaultSymbols, (quote) => {
+          polygonService.subscribeToQuotes(defaultSymbols, async (quote) => {
             console.log('Received simulated quote update:', quote);
             setLastUpdate(new Date());
+            
+            // Store simulated quote in Supabase
+            await storeQuote(
+              quote.symbol,
+              {
+                bid: quote.bid,
+                ask: quote.ask,
+                last_price: quote.last,
+                volume: quote.volume
+              },
+              'simulated_realtime',
+              true, // is_mock
+              true  // is_real_time (simulated real-time)
+            );
           });
           
           // Subscribe to AAPL options for demo with simulated data
@@ -116,11 +167,17 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
           setIsLiveConnection(false);
           setIsSimulatedData(false);
           
+          // Update Supabase with error status
+          await updateConnectionStatus('polygon_io', 'error', {
+            error_message: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+          });
+          
           // Try to fetch last EOD price for AAPL as fallback
           try {
-            const eodData = await polygonService.getLastQuote('AAPL');
-            if (eodData && eodData.last && eodData.last.price) {
-              setLastEODPrice(eodData.last.price);
+            const eodQuote = await polygonService.getStockQuote('AAPL');
+            if (eodQuote && eodQuote.last) {
+              setLastEODPrice(eodQuote.last);
             }
           } catch (eodError) {
             console.error('Failed to fetch EOD price:', eodError);
@@ -146,6 +203,13 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
         setConnectionStatus('disconnected');
         setIsLiveConnection(false);
         console.log('Polygon.io connection lost, attempting to reconnect...');
+        
+        // Update Supabase with disconnection
+        updateConnectionStatus('polygon_io', 'disconnected', {
+          reason: 'Connection lost',
+          timestamp: new Date().toISOString()
+        });
+        
         connectToPolygon();
       } else if (connected && !isLiveConnection && connectionStatus !== 'simulated') {
         // Check if we've regained live connection
@@ -153,6 +217,9 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
         setConnectionStatus('connected');
         setIsLiveConnection(true);
         setIsSimulatedData(false);
+        
+        // Update Supabase with reconnection
+        updateConnectionStatus('polygon_io', 'connected');
       }
     }, 5000);
 
@@ -165,7 +232,7 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
       clearInterval(statusCheckInterval);
       polygonService.disconnect();
     };
-  }, []);
+  }, [storeQuote, updateConnectionStatus]);
 
   const updateStock = (symbol: string, data: Partial<Stock>) => {
     try {
@@ -225,7 +292,7 @@ export const RealTimeDataProvider: React.FC<RealTimeDataProviderProps> = ({ chil
     }
   };
 
-  console.log('RealTimeDataProvider providing context with Polygon.io integration');
+  console.log('RealTimeDataProvider providing context with Polygon.io and Supabase integration');
 
   return (
     <RealTimeDataContext.Provider value={{

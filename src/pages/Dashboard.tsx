@@ -6,6 +6,7 @@ import WatchlistWidget from '../components/dashboard/WatchlistWidget';
 import PriceChart from '../components/common/PriceChart';
 import StockPrice from '../components/common/StockPrice';
 import DisclaimerBanner from '../components/common/DisclaimerBanner';
+import DataQualityWidget from '../components/common/DataQualityWidget';
 import { mockAAPLData, mockStocks } from '../data/mockData';
 
 const Dashboard: React.FC = () => {
@@ -50,9 +51,14 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <MarketOverview />
         <RecentActivity />
+      </div>
+      
+      {/* Data Quality Monitoring */}
+      <div className="grid grid-cols-1 gap-6">
+        <DataQualityWidget />
       </div>
     </div>
   );
