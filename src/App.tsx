@@ -89,7 +89,7 @@ function App() {
       {hasAcceptedDisclaimer && (
         <Router>
           <Routes>
-            <Route path="/" element={<Layout />}>
+            <Route path="/\" element={<Layout />}>
               <Route index element={<Dashboard />} />
               <Route path="options-chain" element={<OptionsChain />} />
               <Route path="portfolio" element={<Portfolio />} />
