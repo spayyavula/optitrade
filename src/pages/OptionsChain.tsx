@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import StockPrice from '../components/common/StockPrice';
 import PriceChart from '../components/common/PriceChart';
 import OptionsChainTable from '../components/optionsChain/OptionsChainTable';
+import DisclaimerBanner from '../components/common/DisclaimerBanner';
 import { mockOptionsChain, mockAAPLData, mockStocks } from '../data/mockData';
 import { Option } from '../types';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
+import { formatCurrency, formatDate } from '../utils/formatters';
 
 const OptionsChain: React.FC = () => {
   const [selectedExpiration, setSelectedExpiration] = useState(mockOptionsChain.expirations[0]);
@@ -23,6 +25,8 @@ const OptionsChain: React.FC = () => {
 
   return (
     <div className="animate-fade-in">
+      <DisclaimerBanner />
+      
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-6">Options Chain</h1>
         
@@ -133,6 +137,7 @@ const OptionsChain: React.FC = () => {
             <AlertCircle size={20} className="text-primary-400 mr-2" />
             <p className="text-sm">
               Click on any option row to see more details and trading actions. Options shown are for educational purposes only.
+              <strong className="text-warning-400 ml-1">Always verify prices with your broker before trading.</strong>
             </p>
           </div>
           
@@ -163,6 +168,12 @@ const OptionsChain: React.FC = () => {
             </div>
             
             <div className="p-4">
+              <div className="bg-warning-900 border border-warning-700 p-3 rounded-lg mb-4">
+                <p className="text-warning-200 text-sm">
+                  <strong>Educational Only:</strong> This is a simulation. OptionsWorld is not a broker and cannot execute real trades.
+                </p>
+              </div>
+              
               <div className="mb-4">
                 <p className="mb-2">
                   <span className="text-neutral-400 text-sm">Symbol: </span>
@@ -213,17 +224,10 @@ const OptionsChain: React.FC = () => {
               
               <div className="flex gap-3">
                 <button
-                  className={`flex-1 py-2 rounded-lg font-medium ${
-                    isBuy ? 'bg-success-600 hover:bg-success-700 text-white' : 'bg-error-600 hover:bg-error-700 text-white'
-                  }`}
-                >
-                  {isBuy ? 'Buy' : 'Sell'} {quantity} Contract{quantity > 1 ? 's' : ''}
-                </button>
-                <button
-                  className="btn-ghost"
+                  className="btn-ghost flex-1"
                   onClick={() => setShowTrade(false)}
                 >
-                  Cancel
+                  Close (Demo Only)
                 </button>
               </div>
             </div>

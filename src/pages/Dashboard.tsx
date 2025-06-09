@@ -5,6 +5,7 @@ import RecentActivity from '../components/dashboard/RecentActivity';
 import WatchlistWidget from '../components/dashboard/WatchlistWidget';
 import PriceChart from '../components/common/PriceChart';
 import StockPrice from '../components/common/StockPrice';
+import DisclaimerBanner from '../components/common/DisclaimerBanner';
 import { mockAAPLData, mockStocks } from '../data/mockData';
 
 const Dashboard: React.FC = () => {
@@ -12,6 +13,8 @@ const Dashboard: React.FC = () => {
   
   return (
     <div className="animate-fade-in">
+      <DisclaimerBanner />
+      
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
         <AccountSummary />

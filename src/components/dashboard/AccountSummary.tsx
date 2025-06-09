@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatCurrency } from '../../utils/formatters';
 import { mockUser } from '../../data/mockData';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 
 const AccountSummary: React.FC = () => {
   // Random daily change for demonstration
@@ -19,6 +19,10 @@ const AccountSummary: React.FC = () => {
           <span className="text-xs font-medium px-2 py-1 rounded bg-neutral-700">
             DEMO ACCOUNT
           </span>
+          <div className="flex items-center text-xs text-warning-400">
+            <AlertTriangle size={14} className="mr-1" />
+            <span>Educational Only</span>
+          </div>
         </div>
       </div>
       
@@ -52,9 +56,20 @@ const AccountSummary: React.FC = () => {
         </div>
       </div>
       
+      <div className="bg-warning-900 border border-warning-700 p-3 rounded-lg mb-4">
+        <p className="text-warning-200 text-sm">
+          <strong>Demo Account:</strong> All values are simulated for educational purposes. 
+          This is not a real trading account.
+        </p>
+      </div>
+      
       <div className="flex justify-between">
-        <button className="btn-primary">Deposit Funds</button>
-        <button className="btn-ghost">View Statement</button>
+        <button className="btn-ghost" disabled>
+          Deposit Funds (Demo)
+        </button>
+        <button className="btn-ghost" disabled>
+          View Statement (Demo)
+        </button>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Bell, Search, Menu, X, User } from 'lucide-react';
 import { mockUser } from '../../data/mockData';
 import { formatCurrency } from '../../utils/formatters';
+import DataFeedStatus from './DataFeedStatus';
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -46,8 +47,9 @@ const Header: React.FC = () => {
           </button>
         )}
 
-        {/* Account info and actions */}
+        {/* Data feed status and account info */}
         <div className="hidden md:flex items-center gap-6">
+          <DataFeedStatus />
           <div className="flex flex-col items-end">
             <span className="text-xs text-neutral-400">Account Value</span>
             <span className="font-medium">{formatCurrency(mockUser.accountValue)}</span>
@@ -94,6 +96,10 @@ const Header: React.FC = () => {
                 <p className="text-xs text-neutral-400">Buying Power</p>
                 <p className="font-medium">{formatCurrency(mockUser.buyingPower)}</p>
               </div>
+            </div>
+            
+            <div className="bg-neutral-700 p-3 rounded-lg">
+              <DataFeedStatus />
             </div>
           </div>
           
