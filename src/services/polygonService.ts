@@ -36,6 +36,8 @@ class PolygonService {
   private subscriptions: Set<string> = new Set();
   private callbacks: Map<string, Function[]> = new Map();
   private connectionPromise: Promise<void> | null = null;
+  private resolveConnection: (() => void) | null = null;
+  private rejectConnection: ((error: any) => void) | null = null;
 
   constructor() {
     // In production, this should come from environment variables
@@ -57,6 +59,13 @@ class PolygonService {
       this.wsClient.onopen = () => {
         console.log('Polygon WebSocket connected');
         this.isConnected = true;
+        
+        // Resolve any pending connection promise
+        if (this.resolveConnection) {
+          this.resolveConnection();
+          this.resolveConnection = null;
+          this.rejectConnection = null;
+        }
       };
 
       this.wsClient.onclose = () => {
@@ -68,6 +77,13 @@ class PolygonService {
 
       this.wsClient.onerror = (error: any) => {
         console.error('Polygon WebSocket error:', error);
+        
+        // Reject any pending connection promise
+        if (this.rejectConnection) {
+          this.rejectConnection(error);
+          this.resolveConnection = null;
+          this.rejectConnection = null;
+        }
       };
 
       this.wsClient.onmessage = (message: any) => {
@@ -219,36 +235,39 @@ class PolygonService {
 
     // Create a new connection promise
     this.connectionPromise = new Promise<void>((resolve, reject) => {
+      // Store the resolve and reject functions to be called by event handlers
+      this.resolveConnection = resolve;
+      this.rejectConnection = reject;
+
+      // Set a timeout for the connection
       const timeout = setTimeout(() => {
-        reject(new Error('WebSocket connection timeout'));
+        if (this.rejectConnection) {
+          this.rejectConnection(new Error('WebSocket connection timeout'));
+          this.resolveConnection = null;
+          this.rejectConnection = null;
+        }
       }, 10000); // 10 second timeout
 
-      const originalOnOpen = this.wsClient.onopen;
-      const originalOnError = this.wsClient.onerror;
+      // Clear timeout if connection succeeds or fails
+      const originalResolve = this.resolveConnection;
+      const originalReject = this.rejectConnection;
 
-      this.wsClient.onopen = () => {
+      this.resolveConnection = () => {
         clearTimeout(timeout);
-        this.isConnected = true;
-        console.log('Polygon WebSocket connected');
-        
-        // Restore original handler
-        this.wsClient.onopen = originalOnOpen;
-        
-        resolve();
+        if (originalResolve) originalResolve();
       };
 
-      this.wsClient.onerror = (error: any) => {
+      this.rejectConnection = (error: any) => {
         clearTimeout(timeout);
-        console.error('Polygon WebSocket connection error:', error);
-        
-        // Restore original handler
-        this.wsClient.onerror = originalOnError;
-        
-        reject(error);
+        if (originalReject) originalReject(error);
       };
 
-      // Always explicitly initiate the WebSocket connection
-      this.wsClient.connect();
+      // The WebSocket connection is automatically established when the client is created
+      // We just need to wait for the onopen event to fire
+      if (this.isConnected) {
+        // Already connected, resolve immediately
+        this.resolveConnection();
+      }
     });
 
     return this.connectionPromise;
@@ -266,6 +285,8 @@ class PolygonService {
     this.subscriptions.clear();
     this.callbacks.clear();
     this.connectionPromise = null;
+    this.resolveConnection = null;
+    this.rejectConnection = null;
   }
 
   // Subscribe to real-time stock quotes
