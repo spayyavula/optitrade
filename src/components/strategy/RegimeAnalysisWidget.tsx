@@ -270,7 +270,7 @@ const RegimeAnalysisWidget: React.FC = () => {
                             <p key={idx} className="text-xs text-neutral-400 flex items-start">
                               <span className="w-1 h-1 bg-primary-400 rounded-full mt-1.5 mr-2 flex-shrink-0"></span>
                               {reason}
-                            </span>
+                            </p>
                           ))}
                         </div>
                       </div>
