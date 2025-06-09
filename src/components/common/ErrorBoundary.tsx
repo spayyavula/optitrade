@@ -18,40 +18,44 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    // Update state so the next render will show the fallback UI
+    console.error('ErrorBoundary: Error caught by getDerivedStateFromError:', error);
     return { hasError: true, error, errorInfo: null };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log the error to console and any error reporting service
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error('=== ERROR BOUNDARY CAUGHT ERROR ===');
+    console.error('Error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Component stack:', errorInfo.componentStack);
+    console.error('================================');
     
-    // Update state with error details
     this.setState({
       error,
       errorInfo
     });
-
-    // In a real app, you would log this to an error reporting service
-    // Example: Sentry.captureException(error, { extra: errorInfo });
   }
 
   handleReload = () => {
+    console.log('ErrorBoundary: Reloading page');
     window.location.reload();
   };
 
   handleGoHome = () => {
+    console.log('ErrorBoundary: Going home');
     this.setState({ hasError: false, error: null, errorInfo: null });
     window.location.href = '/';
   };
 
   render() {
     if (this.state.hasError) {
+      console.log('ErrorBoundary: Rendering error UI');
+      
       return (
         <div className="min-h-screen bg-neutral-900 text-neutral-100 flex items-center justify-center p-4">
           <div className="bg-neutral-800 border border-neutral-700 rounded-xl shadow-xl w-full max-w-2xl p-6">
             <div className="flex items-center mb-6">
-              <AlertTriangle className="text-error-400 mr-3\" size={32} />
+              <AlertTriangle className="text-error-400 mr-3" size={32} />
               <div>
                 <h1 className="text-2xl font-bold text-error-300">Something went wrong</h1>
                 <p className="text-neutral-400 mt-1">The application encountered an unexpected error</p>
@@ -64,18 +68,16 @@ class ErrorBoundary extends Component<Props, State> {
                 {this.state.error?.message || 'Unknown error occurred'}
               </p>
               
-              {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
-                <details className="mt-4">
-                  <summary className="cursor-pointer text-neutral-400 text-sm hover:text-neutral-300">
-                    Technical Details (Development Mode)
-                  </summary>
-                  <pre className="mt-2 text-xs text-neutral-500 overflow-auto max-h-40 bg-neutral-800 p-2 rounded">
-                    {this.state.error?.stack}
-                    {'\n\nComponent Stack:'}
-                    {this.state.errorInfo.componentStack}
-                  </pre>
-                </details>
-              )}
+              <details className="mt-4">
+                <summary className="cursor-pointer text-neutral-400 text-sm hover:text-neutral-300">
+                  Technical Details
+                </summary>
+                <pre className="mt-2 text-xs text-neutral-500 overflow-auto max-h-40 bg-neutral-800 p-2 rounded">
+                  {this.state.error?.stack}
+                  {this.state.errorInfo && '\n\nComponent Stack:'}
+                  {this.state.errorInfo?.componentStack}
+                </pre>
+              </details>
             </div>
 
             <div className="bg-warning-900/30 border border-warning-700 p-4 rounded-lg mb-6">
