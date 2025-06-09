@@ -13,6 +13,7 @@ import Learn from './pages/Learn';
 
 function App() {
   console.log('=== App Component Rendering ===');
+  console.log('React version:', React.version);
   
   const [hasAcceptedDisclaimer, setHasAcceptedDisclaimer] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +21,7 @@ function App() {
 
   useEffect(() => {
     console.log('App useEffect running...');
+    console.log('localStorage available:', typeof Storage !== 'undefined');
     
     // Enhanced error logging
     const handleError = (event: ErrorEvent) => {
@@ -48,6 +50,14 @@ function App() {
     // Check disclaimer status
     try {
       console.log('Checking disclaimer status...');
+      
+      if (typeof Storage === 'undefined') {
+        console.warn('localStorage not available, proceeding without disclaimer check');
+        setHasAcceptedDisclaimer(false);
+        setIsLoading(false);
+        return;
+      }
+      
       const disclaimerAccepted = localStorage.getItem('optionsworld-disclaimer-accepted');
       const disclaimerDate = localStorage.getItem('optionsworld-disclaimer-date');
       
@@ -81,8 +91,15 @@ function App() {
     try {
       console.log('Setting disclaimer acceptance...');
       setHasAcceptedDisclaimer(true);
-      localStorage.setItem('optionsworld-disclaimer-accepted', 'true');
-      localStorage.setItem('optionsworld-disclaimer-date', new Date().toISOString());
+      
+      if (typeof Storage !== 'undefined') {
+        localStorage.setItem('optionsworld-disclaimer-accepted', 'true');
+        localStorage.setItem('optionsworld-disclaimer-date', new Date().toISOString());
+        console.log('Disclaimer acceptance saved to localStorage');
+      } else {
+        console.warn('localStorage not available, disclaimer acceptance not persisted');
+      }
+      
       console.log('Disclaimer accepted successfully, entering application');
     } catch (err) {
       console.error('Error saving disclaimer acceptance:', err);
@@ -99,6 +116,7 @@ function App() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
           <p className="text-neutral-400">Loading OptionsWorld...</p>
+          <p className="text-neutral-500 text-sm mt-2">Initializing application...</p>
         </div>
       </div>
     );
@@ -137,7 +155,7 @@ function App() {
         {hasAcceptedDisclaimer ? (
           <Router>
             <Routes>
-              <Route path="/\" element={<Layout />}>
+              <Route path="/" element={<Layout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="options-chain" element={<OptionsChain />} />
                 <Route path="portfolio" element={<Portfolio />} />
@@ -152,6 +170,7 @@ function App() {
           <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
             <div className="text-center text-neutral-400">
               <p>Please accept the disclaimer to continue...</p>
+              <p className="text-neutral-500 text-sm mt-2">Waiting for user interaction...</p>
             </div>
           </div>
         )}

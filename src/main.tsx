@@ -3,10 +3,19 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
+// Clear console and start fresh
+console.clear();
+
 // Enhanced global error logging
 console.log('=== OptionsWorld Application Starting ===');
 console.log('Environment:', import.meta.env.MODE);
 console.log('Timestamp:', new Date().toISOString());
+console.log('User Agent:', navigator.userAgent);
+console.log('URL:', window.location.href);
+console.log('Document ready state:', document.readyState);
+
+// Log all environment variables
+console.log('Environment variables:', import.meta.env);
 
 // Global error handlers
 window.addEventListener('error', (event) => {
@@ -39,6 +48,9 @@ if (!rootElement) {
 }
 
 console.log('Root element found:', rootElement);
+console.log('Root element innerHTML:', rootElement.innerHTML);
+console.log('Root element attributes:', rootElement.attributes);
+
 console.log('Creating React root...');
 
 try {
@@ -46,12 +58,30 @@ try {
   console.log('React root created successfully');
   
   console.log('Rendering App component...');
+  
+  // Add a timeout to see if rendering hangs
+  const renderTimeout = setTimeout(() => {
+    console.error('TIMEOUT: App rendering took longer than 5 seconds');
+  }, 5000);
+  
   root.render(
     <StrictMode>
       <App />
     </StrictMode>
   );
+  
+  clearTimeout(renderTimeout);
   console.log('App component rendered successfully');
+  
+  // Log successful mount
+  setTimeout(() => {
+    console.log('=== POST-RENDER CHECK ===');
+    console.log('Root element content after render:', rootElement.innerHTML.substring(0, 200) + '...');
+    console.log('Document title:', document.title);
+    console.log('Body classes:', document.body.className);
+    console.log('========================');
+  }, 100);
+  
 } catch (error) {
   console.error('CRITICAL ERROR during React rendering:', error);
   console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
