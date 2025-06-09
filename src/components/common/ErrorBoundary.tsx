@@ -3,6 +3,7 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface State {
@@ -17,7 +18,7 @@ class ErrorBoundary extends Component<Props, State> {
     this.state = { hasError: false, error: null, errorInfo: null };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     console.error('ErrorBoundary: Error caught by getDerivedStateFromError:', error);
     return { hasError: true, error, errorInfo: null };
   }
@@ -34,6 +35,11 @@ class ErrorBoundary extends Component<Props, State> {
       error,
       errorInfo
     });
+
+    // Report error to monitoring service in production
+    if (process.env.NODE_ENV === 'production') {
+      // Example: reportError(error, errorInfo);
+    }
   }
 
   handleReload = () => {
@@ -41,21 +47,25 @@ class ErrorBoundary extends Component<Props, State> {
     window.location.reload();
   };
 
-  handleGoHome = () => {
-    console.log('ErrorBoundary: Going home');
+  handleReset = () => {
+    console.log('ErrorBoundary: Resetting error state');
     this.setState({ hasError: false, error: null, errorInfo: null });
-    window.location.href = '/';
   };
 
   render() {
     if (this.state.hasError) {
       console.log('ErrorBoundary: Rendering error UI');
       
+      // Use custom fallback if provided
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+      
       return (
         <div className="min-h-screen bg-neutral-900 text-neutral-100 flex items-center justify-center p-4">
           <div className="bg-neutral-800 border border-neutral-700 rounded-xl shadow-xl w-full max-w-2xl p-6">
             <div className="flex items-center mb-6">
-              <AlertTriangle className="text-error-400 mr-3\" size={32} />
+              <AlertTriangle className="text-error-400 mr-3" size={32} />
               <div>
                 <h1 className="text-2xl font-bold text-error-300">Something went wrong</h1>
                 <p className="text-neutral-400 mt-1">The application encountered an unexpected error</p>
@@ -100,11 +110,11 @@ class ErrorBoundary extends Component<Props, State> {
                 Reload Page
               </button>
               <button
-                onClick={this.handleGoHome}
+                onClick={this.handleReset}
                 className="btn-ghost flex items-center flex-1"
               >
                 <Home size={18} className="mr-2" />
-                Go Home
+                Try Again
               </button>
             </div>
 

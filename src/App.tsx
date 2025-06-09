@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/common/Layout';
 import DisclaimerModal from './components/common/DisclaimerModal';
-import ErrorBoundary from './components/common/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
 import OptionsChain from './pages/OptionsChain';
 import Portfolio from './pages/Portfolio';
@@ -23,30 +22,6 @@ function App() {
     console.log('App useEffect running...');
     console.log('localStorage available:', typeof Storage !== 'undefined');
     
-    // Enhanced error logging
-    const handleError = (event: ErrorEvent) => {
-      console.error('=== APP LEVEL ERROR ===');
-      console.error('Message:', event.message);
-      console.error('Filename:', event.filename);
-      console.error('Line:', event.lineno);
-      console.error('Column:', event.colno);
-      console.error('Error object:', event.error);
-      console.error('Stack trace:', event.error?.stack);
-      console.error('=====================');
-      setError(`Application Error: ${event.error?.message || 'Unknown error'}`);
-    };
-
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('=== APP LEVEL PROMISE REJECTION ===');
-      console.error('Reason:', event.reason);
-      console.error('Promise:', event.promise);
-      console.error('================================');
-      setError(`Promise Rejection: ${event.reason?.message || 'Unknown rejection'}`);
-    };
-
-    window.addEventListener('error', handleError);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-
     // Check disclaimer status
     try {
       console.log('Checking disclaimer status...');
@@ -78,12 +53,6 @@ function App() {
       setIsLoading(false);
       console.log('App initialization completed');
     }
-
-    return () => {
-      console.log('App cleanup running...');
-      window.removeEventListener('error', handleError);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-    };
   }, []);
 
   const handleAcceptDisclaimer = () => {
@@ -144,38 +113,37 @@ function App() {
   console.log('App rendering main content...');
   console.log('Has accepted disclaimer:', hasAcceptedDisclaimer);
 
-  return (
-    <ErrorBoundary>
+  // Show disclaimer modal if not accepted
+  if (!hasAcceptedDisclaimer) {
+    console.log('Showing disclaimer modal');
+    return (
       <div className="min-h-screen bg-neutral-900">
         <DisclaimerModal 
-          isOpen={!hasAcceptedDisclaimer}
+          isOpen={true}
           onAccept={handleAcceptDisclaimer}
         />
-        
-        {hasAcceptedDisclaimer ? (
-          <Router>
-            <Routes>
-              <Route path="/\" element={<Layout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="options-chain" element={<OptionsChain />} />
-                <Route path="portfolio" element={<Portfolio />} />
-                <Route path="strategy-builder" element={<StrategyBuilder />} />
-                <Route path="watchlist" element={<Watchlist />} />
-                <Route path="scanner" element={<Scanner />} />
-                <Route path="learn" element={<Learn />} />
-              </Route>
-            </Routes>
-          </Router>
-        ) : (
-          <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
-            <div className="text-center text-neutral-400">
-              <p>Please accept the disclaimer to continue...</p>
-              <p className="text-neutral-500 text-sm mt-2">Waiting for user interaction...</p>
-            </div>
-          </div>
-        )}
       </div>
-    </ErrorBoundary>
+    );
+  }
+
+  // Main application with router
+  console.log('Rendering main application with router');
+  return (
+    <div className="min-h-screen bg-neutral-900">
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="options-chain" element={<OptionsChain />} />
+            <Route path="portfolio" element={<Portfolio />} />
+            <Route path="strategy-builder" element={<StrategyBuilder />} />
+            <Route path="watchlist" element={<Watchlist />} />
+            <Route path="scanner" element={<Scanner />} />
+            <Route path="learn" element={<Learn />} />
+          </Route>
+        </Routes>
+      </Router>
+    </div>
   );
 }
 
