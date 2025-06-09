@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { mockWatchlist } from '../data/mockData';
 import { formatCurrency, getProfitLossClass } from '../utils/formatters';
-import { Plus, Trash2, Star, StarOff, MoreVertical } from 'lucide-react';
+import { Plus, Trash2, Star, StarOff, MoreVertical, X } from 'lucide-react';
 import StockPrice from '../components/common/StockPrice';
 
 const Watchlist: React.FC = () => {
