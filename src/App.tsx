@@ -37,14 +37,14 @@ function App() {
       {hasAcceptedDisclaimer && (
         <Router>
           <Routes>
-            <Route path="/\" element={<Layout />}>
+            <Route path="/" element={<Layout />}>
               <Route index element={<Dashboard />} />
-              <Route path="/options-chain" element={<OptionsChain />} />
-              <Route path="/portfolio" element={<Portfolio />} />
-              <Route path="/strategy-builder" element={<StrategyBuilder />} />
-              <Route path="/watchlist" element={<Watchlist />} />
-              <Route path="/scanner" element={<Scanner />} />
-              <Route path="/learn" element={<Learn />} />
+              <Route path="options-chain" element={<OptionsChain />} />
+              <Route path="portfolio" element={<Portfolio />} />
+              <Route path="strategy-builder" element={<StrategyBuilder />} />
+              <Route path="watchlist" element={<Watchlist />} />
+              <Route path="scanner" element={<Scanner />} />
+              <Route path="learn" element={<Learn />} />
             </Route>
           </Routes>
         </Router>
