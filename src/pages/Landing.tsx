@@ -14,19 +14,23 @@ import {
   Award,
   Clock,
   DollarSign,
-  CreditCard,
-  Lock
+  X
 } from 'lucide-react';
+import StripePaymentForm from '../components/payment/StripePaymentForm';
+import TrialSignupForm from '../components/payment/TrialSignupForm';
 
 const Landing: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<'trial' | 'monthly' | 'annual'>('trial');
   const [showPayment, setShowPayment] = useState(false);
   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const features = [
     {
-      icon: <BarChart3 className="text-primary-400\" size={24} />,
+      icon: <BarChart3 className="text-primary-400" size={24} />,
       title: "Real-Time Options Chain",
       description: "Live market data powered by Polygon.io with real-time Greeks and implied volatility calculations."
     },
@@ -36,7 +40,7 @@ const Landing: React.FC = () => {
       description: "Advanced AI analyzes market regimes and recommends optimal options strategies based on current conditions."
     },
     {
-      icon: <Target className="text-accent-400\" size={24} />,
+      icon: <Target className="text-accent-400" size={24} />,
       title: "Risk Management Tools",
       description: "Comprehensive portfolio tracking with P&L analysis, position sizing, and risk metrics."
     },
@@ -46,7 +50,7 @@ const Landing: React.FC = () => {
       description: "Identify arbitrage opportunities and mispriced options using Black-Scholes analysis."
     },
     {
-      icon: <Award className="text-warning-400\" size={24} />,
+      icon: <Award className="text-warning-400" size={24} />,
       title: "Educational Platform",
       description: "Learn options trading through interactive lessons, challenges, and company-sponsored tournaments."
     },
@@ -89,7 +93,7 @@ const Landing: React.FC = () => {
       id: 'trial',
       name: 'Free Trial',
       price: 0,
-      duration: '1 Month',
+      duration: '30 Days',
       description: 'Perfect for getting started',
       features: [
         'Full platform access',
@@ -97,7 +101,7 @@ const Landing: React.FC = () => {
         'AI strategy recommendations',
         'Educational content',
         'Paper trading',
-        'Basic support'
+        'Email support'
       ],
       popular: true,
       cta: 'Start Free Trial'
@@ -138,41 +142,33 @@ const Landing: React.FC = () => {
     }
   ];
 
-  const handleStartTrial = () => {
-    if (selectedPlan === 'trial') {
-      // For free trial, just collect email
-      if (!email) {
-        alert('Please enter your email address');
-        return;
-      }
-      setIsProcessing(true);
-      
-      // Simulate account creation
-      setTimeout(() => {
-        setIsProcessing(false);
-        alert('Free trial activated! Check your email for login details.');
-        // In real app, would redirect to dashboard
-      }, 2000);
-    } else {
-      setShowPayment(true);
-    }
+  const handlePaymentSuccess = (result: any) => {
+    console.log('Payment successful:', result);
+    setIsProcessing(false);
+    setPaymentSuccess(true);
+    setShowPayment(false);
+    
+    // In a real app, you might redirect to the dashboard or show a success page
+    setTimeout(() => {
+      alert('Payment successful! Welcome to OptionsWorld Professional.');
+    }, 500);
   };
 
-  const handlePayment = () => {
-    if (!email) {
-      alert('Please enter your email address');
-      return;
-    }
-    
-    setIsProcessing(true);
-    
-    // Simulate payment processing
-    setTimeout(() => {
-      setIsProcessing(false);
-      setShowPayment(false);
-      alert('Payment successful! Welcome to OptionsWorld Professional.');
-      // In real app, would integrate with Stripe and redirect to dashboard
-    }, 3000);
+  const handlePaymentError = (error: string) => {
+    console.error('Payment error:', error);
+    setIsProcessing(false);
+    alert(`Payment failed: ${error}`);
+  };
+
+  const handleTrialSuccess = (subscriber: any) => {
+    console.log('Trial signup successful:', subscriber);
+    setPaymentSuccess(true);
+    setShowPayment(false);
+  };
+
+  const handleTrialError = (error: string) => {
+    console.error('Trial signup error:', error);
+    alert(`Trial signup failed: ${error}`);
   };
 
   return (
@@ -202,7 +198,10 @@ const Landing: React.FC = () => {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
               <button 
-                onClick={() => setShowPayment(true)}
+                onClick={() => {
+                  setSelectedPlan('trial');
+                  setShowPayment(true);
+                }}
                 className="btn-primary text-lg px-8 py-4 flex items-center"
               >
                 <Play size={20} className="mr-2" />
@@ -216,7 +215,7 @@ const Landing: React.FC = () => {
             
             <div className="flex items-center justify-center text-sm text-neutral-400">
               <CheckCircle size={16} className="text-success-400 mr-2" />
-              <span>No credit card required • 1-month free trial • Cancel anytime</span>
+              <span>No credit card required • 30-day free trial • Cancel anytime</span>
             </div>
           </div>
         </div>
@@ -337,11 +336,7 @@ const Landing: React.FC = () => {
                 <button 
                   onClick={() => {
                     setSelectedPlan(plan.id as any);
-                    if (plan.id === 'trial') {
-                      setShowPayment(true);
-                    } else {
-                      setShowPayment(true);
-                    }
+                    setShowPayment(true);
                   }}
                   className={`w-full py-3 px-6 rounded-lg font-medium transition-all ${
                     plan.popular
@@ -367,7 +362,10 @@ const Landing: React.FC = () => {
             Join thousands of traders who have already discovered the power of AI-driven options analysis.
           </p>
           <button 
-            onClick={() => setShowPayment(true)}
+            onClick={() => {
+              setSelectedPlan('trial');
+              setShowPayment(true);
+            }}
             className="btn-primary text-lg px-8 py-4 flex items-center mx-auto"
           >
             Start Your Free Trial
@@ -376,130 +374,85 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* Payment Modal */}
+      {/* Payment/Signup Modal */}
       {showPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-800 rounded-xl shadow-xl w-full max-w-md border border-neutral-700">
+          <div className="bg-neutral-800 rounded-xl shadow-xl w-full max-w-md border border-neutral-700 max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-white mb-2">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-white">
                   {selectedPlan === 'trial' ? 'Start Free Trial' : 'Subscribe to Professional'}
                 </h3>
-                <p className="text-neutral-400">
-                  {selectedPlan === 'trial' 
-                    ? 'Get full access for 1 month, completely free'
-                    : `$${pricingPlans.find(p => p.id === selectedPlan)?.price} ${pricingPlans.find(p => p.id === selectedPlan)?.duration}`
-                  }
-                </p>
+                <button 
+                  onClick={() => setShowPayment(false)}
+                  className="text-neutral-400 hover:text-white"
+                >
+                  <X size={24} />
+                </button>
               </div>
               
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-neutral-300 mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="input w-full"
-                    placeholder="your@email.com"
-                    required
-                  />
-                </div>
-                
-                {selectedPlan !== 'trial' && (
-                  <>
-                    <div>
-                      <label htmlFor="card" className="block text-sm font-medium text-neutral-300 mb-1">
-                        Card Number
-                      </label>
-                      <div className="relative">
+              {selectedPlan === 'trial' ? (
+                <TrialSignupForm
+                  onSuccess={handleTrialSuccess}
+                  onError={handleTrialError}
+                />
+              ) : (
+                <div className="space-y-6">
+                  {/* Contact Info */}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-300 mb-1">
+                          First Name
+                        </label>
                         <input
                           type="text"
-                          id="card"
-                          className="input w-full pl-10"
-                          placeholder="1234 5678 9012 3456"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="input w-full"
+                          placeholder="John"
                         />
-                        <CreditCard size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-300 mb-1">
+                          Last Name
+                        </label>
+                        <input
+                          type="text"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="input w-full"
+                          placeholder="Doe"
+                        />
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="expiry" className="block text-sm font-medium text-neutral-300 mb-1">
-                          Expiry
-                        </label>
-                        <input
-                          type="text"
-                          id="expiry"
-                          className="input w-full"
-                          placeholder="MM/YY"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="cvc" className="block text-sm font-medium text-neutral-300 mb-1">
-                          CVC
-                        </label>
-                        <input
-                          type="text"
-                          id="cvc"
-                          className="input w-full"
-                          placeholder="123"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-300 mb-1">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="input w-full"
+                        placeholder="john@example.com"
+                        required
+                      />
                     </div>
-                  </>
-                )}
-                
-                <div className="bg-neutral-750 p-3 rounded-lg">
-                  <div className="flex items-center text-sm text-neutral-300">
-                    <Lock size={16} className="text-success-400 mr-2" />
-                    <span>Secure payment powered by Stripe</span>
                   </div>
+
+                  {/* Stripe Payment Form */}
+                  <StripePaymentForm
+                    planType={selectedPlan as 'monthly' | 'annual'}
+                    email={email}
+                    firstName={firstName}
+                    lastName={lastName}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                  />
                 </div>
-              </div>
-              
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowPayment(false)}
-                  className="btn-ghost flex-1"
-                  disabled={isProcessing}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={selectedPlan === 'trial' ? handleStartTrial : handlePayment}
-                  className="btn-primary flex-1 flex items-center justify-center"
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  ) : (
-                    <>
-                      {selectedPlan === 'trial' ? (
-                        <>
-                          <Clock size={18} className="mr-2" />
-                          Start Trial
-                        </>
-                      ) : (
-                        <>
-                          <DollarSign size={18} className="mr-2" />
-                          Subscribe
-                        </>
-                      )}
-                    </>
-                  )}
-                </button>
-              </div>
-              
-              <p className="text-xs text-neutral-500 text-center mt-4">
-                {selectedPlan === 'trial' 
-                  ? 'No credit card required. Cancel anytime during trial.'
-                  : 'You can cancel your subscription at any time.'
-                }
-              </p>
+              )}
             </div>
           </div>
         </div>
