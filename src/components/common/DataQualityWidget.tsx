@@ -1,10 +1,39 @@
 import React from 'react';
-import { Database, Wifi, WifiOff, AlertCircle, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { Database, Wifi, WifiOff, AlertCircle, CheckCircle, Clock, TrendingUp, Settings } from 'lucide-react';
 import { useDataQualityMonitor } from '../../hooks/useSupabaseData';
 import { formatPercent } from '../../utils/formatters';
 
 const DataQualityWidget: React.FC = () => {
-  const { metrics, loading, refresh } = useDataQualityMonitor();
+  const { metrics, loading, refresh, isSupabaseAvailable } = useDataQualityMonitor();
+
+  if (!isSupabaseAvailable) {
+    return (
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <Database className="text-neutral-400 mr-2" size={20} />
+            <h3 className="text-lg font-semibold">Data Quality Monitor</h3>
+          </div>
+          <Settings className="text-neutral-400" size={16} />
+        </div>
+        
+        <div className="bg-warning-900/20 border border-warning-700/30 p-4 rounded-lg">
+          <div className="flex items-center mb-2">
+            <AlertCircle className="text-warning-400 mr-2" size={20} />
+            <h4 className="font-medium text-warning-300">Database Not Configured</h4>
+          </div>
+          <p className="text-warning-200 text-sm mb-3">
+            Supabase database is not configured. The application is running in demo mode with simulated data only.
+          </p>
+          <div className="text-xs text-warning-300">
+            <p>• All market data is simulated for demonstration purposes</p>
+            <p>• No data persistence or historical tracking available</p>
+            <p>• Configure Supabase credentials to enable database features</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -62,7 +91,7 @@ const DataQualityWidget: React.FC = () => {
         <div className="bg-neutral-750 p-3 rounded-lg">
           <div className="text-xs text-neutral-400">Success Rate</div>
           <div className={`text-lg font-medium ${overallSuccessRate >= 95 ? 'text-success-400' : overallSuccessRate >= 80 ? 'text-warning-400' : 'text-error-400'}`}>
-            {formatPercent(overallSuccessRate)}
+            {totalRequests > 0 ? formatPercent(overallSuccessRate) : 'N/A'}
           </div>
         </div>
         <div className="bg-neutral-750 p-3 rounded-lg">
@@ -88,6 +117,9 @@ const DataQualityWidget: React.FC = () => {
           <div className="text-center py-4 text-neutral-400">
             <Database size={24} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">No data quality metrics available</p>
+            <p className="text-xs text-neutral-500 mt-1">
+              Metrics will appear once data sources start reporting
+            </p>
           </div>
         ) : (
           metrics.map((metric) => (
@@ -135,7 +167,7 @@ const DataQualityWidget: React.FC = () => {
               
               {metric.error_details && (
                 <div className="mt-2 text-xs text-error-400 bg-error-900/20 p-2 rounded">
-                  Error: {JSON.stringify(metric.error_details)}
+                  Error: {typeof metric.error_details === 'string' ? metric.error_details : JSON.stringify(metric.error_details)}
                 </div>
               )}
             </div>
@@ -147,7 +179,10 @@ const DataQualityWidget: React.FC = () => {
         <div className="flex items-center text-xs text-neutral-500">
           <AlertCircle size={12} className="mr-1" />
           <span>
-            Real-time monitoring of data sources. Mock data is used when markets are closed or connections fail.
+            {isSupabaseAvailable 
+              ? "Real-time monitoring of data sources. Mock data is used when markets are closed or connections fail."
+              : "Database not configured - running in demo mode with simulated data only."
+            }
           </span>
         </div>
       </div>

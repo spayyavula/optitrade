@@ -12,6 +12,7 @@ export interface SupabaseDataState {
   isDataMocked: boolean;
   loading: boolean;
   error: string | null;
+  isSupabaseAvailable: boolean;
 }
 
 export const useSupabaseData = ({ symbol, autoStore = true }: UseSupabaseDataOptions = {}) => {
@@ -20,7 +21,8 @@ export const useSupabaseData = ({ symbol, autoStore = true }: UseSupabaseDataOpt
     dataQuality: [],
     isDataMocked: false,
     loading: true,
-    error: null
+    error: null,
+    isSupabaseAvailable: SupabaseService.isAvailable()
   });
 
   // Store quote data to Supabase
@@ -38,6 +40,11 @@ export const useSupabaseData = ({ symbol, autoStore = true }: UseSupabaseDataOpt
     isMock: boolean = false,
     isRealTime: boolean = true
   ) => {
+    if (!SupabaseService.isAvailable()) {
+      console.warn('Supabase not available - quote not stored');
+      return null;
+    }
+
     try {
       const quoteId = await SupabaseService.storeStockQuote(
         quoteSymbol,
@@ -69,13 +76,23 @@ export const useSupabaseData = ({ symbol, autoStore = true }: UseSupabaseDataOpt
 
   // Fetch latest quote from database
   const fetchLatestQuote = async (quoteSymbol: string) => {
+    if (!SupabaseService.isAvailable()) {
+      setState(prev => ({ 
+        ...prev, 
+        loading: false,
+        error: 'Supabase not configured'
+      }));
+      return null;
+    }
+
     try {
       const quote = await SupabaseService.getLatestStockQuote(quoteSymbol);
       setState(prev => ({ 
         ...prev, 
         latestQuote: quote,
         isDataMocked: quote?.is_mock || false,
-        loading: false 
+        loading: false,
+        error: null
       }));
       return quote;
     } catch (error) {
@@ -91,6 +108,11 @@ export const useSupabaseData = ({ symbol, autoStore = true }: UseSupabaseDataOpt
 
   // Fetch data quality summary
   const fetchDataQuality = async () => {
+    if (!SupabaseService.isAvailable()) {
+      setState(prev => ({ ...prev, dataQuality: [] }));
+      return [];
+    }
+
     try {
       const quality = await SupabaseService.getDataQualitySummary();
       setState(prev => ({ ...prev, dataQuality: quality }));
@@ -107,6 +129,11 @@ export const useSupabaseData = ({ symbol, autoStore = true }: UseSupabaseDataOpt
     status: 'connected' | 'disconnected' | 'simulated' | 'error',
     errorDetails?: any
   ) => {
+    if (!SupabaseService.isAvailable()) {
+      console.warn('Supabase not available - connection status not updated');
+      return;
+    }
+
     try {
       await SupabaseService.updateDataQualityMetrics(dataSourceName, {
         connection_status: status,
@@ -119,10 +146,15 @@ export const useSupabaseData = ({ symbol, autoStore = true }: UseSupabaseDataOpt
   };
 
   useEffect(() => {
-    if (symbol) {
+    if (symbol && SupabaseService.isAvailable()) {
       fetchLatestQuote(symbol);
+    } else {
+      setState(prev => ({ ...prev, loading: false }));
     }
-    fetchDataQuality();
+    
+    if (SupabaseService.isAvailable()) {
+      fetchDataQuality();
+    }
   }, [symbol]);
 
   return {
@@ -132,8 +164,12 @@ export const useSupabaseData = ({ symbol, autoStore = true }: UseSupabaseDataOpt
     fetchDataQuality,
     updateConnectionStatus,
     refresh: () => {
-      if (symbol) fetchLatestQuote(symbol);
-      fetchDataQuality();
+      if (symbol && SupabaseService.isAvailable()) {
+        fetchLatestQuote(symbol);
+      }
+      if (SupabaseService.isAvailable()) {
+        fetchDataQuality();
+      }
     }
   };
 };
@@ -142,8 +178,14 @@ export const useSupabaseData = ({ symbol, autoStore = true }: UseSupabaseDataOpt
 export const useDataQualityMonitor = () => {
   const [metrics, setMetrics] = useState<DataQualityMetric[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSupabaseAvailable] = useState(SupabaseService.isAvailable());
 
   const refreshMetrics = async () => {
+    if (!isSupabaseAvailable) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await SupabaseService.getDataQualitySummary();
@@ -156,16 +198,21 @@ export const useDataQualityMonitor = () => {
   };
 
   useEffect(() => {
-    refreshMetrics();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(refreshMetrics, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isSupabaseAvailable) {
+      refreshMetrics();
+      
+      // Refresh every 30 seconds
+      const interval = setInterval(refreshMetrics, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setLoading(false);
+    }
+  }, [isSupabaseAvailable]);
 
   return {
     metrics,
     loading,
+    isSupabaseAvailable,
     refresh: refreshMetrics
   };
 };

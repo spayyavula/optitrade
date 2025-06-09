@@ -7,7 +7,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase credentials not found. Database features will be limited.');
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+// Only create client if we have valid credentials
+export const supabase = (supabaseUrl && supabaseAnonKey) 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 // Database interfaces matching our schema
 export interface DataSource {
@@ -85,6 +88,11 @@ export interface DataQualityMetric {
 }
 
 export class SupabaseService {
+  // Check if Supabase is available
+  static isAvailable(): boolean {
+    return supabase !== null;
+  }
+
   // Store stock quote with data source tracking
   static async storeStockQuote(
     symbol: string,
@@ -101,33 +109,47 @@ export class SupabaseService {
     isRealTime: boolean = true,
     marketSession: 'pre_market' | 'regular' | 'after_hours' | 'closed' = 'regular'
   ): Promise<string | null> {
+    if (!this.isAvailable()) {
+      console.warn('Supabase not available - skipping quote storage');
+      return null;
+    }
+
     try {
       // Get data source
-      const { data: dataSource } = await supabase
+      const { data: dataSource, error: dsError } = await supabase!
         .from('data_sources')
         .select('id')
         .eq('name', dataSourceName)
         .single();
 
-      if (!dataSource) {
-        console.error(`Data source ${dataSourceName} not found`);
+      if (dsError || !dataSource) {
+        console.error(`Data source ${dataSourceName} not found:`, dsError);
         return null;
       }
 
       // Get or create stock
-      let { data: stock } = await supabase
+      let { data: stock, error: stockError } = await supabase!
         .from('stocks')
         .select('id')
         .eq('symbol', symbol)
         .single();
 
-      if (!stock) {
-        const { data: newStock } = await supabase
+      if (stockError && stockError.code === 'PGRST116') {
+        // Stock doesn't exist, create it
+        const { data: newStock, error: createError } = await supabase!
           .from('stocks')
           .insert({ symbol, name: `${symbol} Corporation` })
           .select('id')
           .single();
+        
+        if (createError) {
+          console.error(`Failed to create stock for ${symbol}:`, createError);
+          return null;
+        }
         stock = newStock;
+      } else if (stockError) {
+        console.error(`Error fetching stock ${symbol}:`, stockError);
+        return null;
       }
 
       if (!stock) {
@@ -136,7 +158,7 @@ export class SupabaseService {
       }
 
       // Insert quote
-      const { data: quoteData, error } = await supabase
+      const { data: quoteData, error } = await supabase!
         .from('stock_quotes')
         .insert({
           stock_id: stock.id,
@@ -170,8 +192,13 @@ export class SupabaseService {
 
   // Get latest stock quote with data source info
   static async getLatestStockQuote(symbol: string): Promise<StockQuote | null> {
+    if (!this.isAvailable()) {
+      console.warn('Supabase not available - cannot fetch quote');
+      return null;
+    }
+
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from('stock_quotes')
         .select(`
           *,
@@ -215,33 +242,38 @@ export class SupabaseService {
     isRealTime: boolean = true,
     marketSession: 'pre_market' | 'regular' | 'after_hours' | 'closed' = 'regular'
   ): Promise<string | null> {
+    if (!this.isAvailable()) {
+      console.warn('Supabase not available - skipping option quote storage');
+      return null;
+    }
+
     try {
       // Get data source
-      const { data: dataSource } = await supabase
+      const { data: dataSource, error: dsError } = await supabase!
         .from('data_sources')
         .select('id')
         .eq('name', dataSourceName)
         .single();
 
-      if (!dataSource) {
-        console.error(`Data source ${dataSourceName} not found`);
+      if (dsError || !dataSource) {
+        console.error(`Data source ${dataSourceName} not found:`, dsError);
         return null;
       }
 
       // Get contract
-      const { data: contract } = await supabase
+      const { data: contract, error: contractError } = await supabase!
         .from('options_contracts')
         .select('id')
         .eq('contract_symbol', contractSymbol)
         .single();
 
-      if (!contract) {
-        console.error(`Options contract ${contractSymbol} not found`);
+      if (contractError || !contract) {
+        console.error(`Options contract ${contractSymbol} not found:`, contractError);
         return null;
       }
 
       // Insert quote
-      const { data: quoteData, error } = await supabase
+      const { data: quoteData, error } = await supabase!
         .from('options_quotes')
         .insert({
           contract_id: contract.id,
@@ -292,23 +324,28 @@ export class SupabaseService {
       error_details?: any;
     }
   ): Promise<boolean> {
+    if (!this.isAvailable()) {
+      console.warn('Supabase not available - skipping metrics update');
+      return false;
+    }
+
     try {
       // Get data source
-      const { data: dataSource } = await supabase
+      const { data: dataSource, error: dsError } = await supabase!
         .from('data_sources')
         .select('id')
         .eq('name', dataSourceName)
         .single();
 
-      if (!dataSource) {
-        console.error(`Data source ${dataSourceName} not found`);
+      if (dsError || !dataSource) {
+        console.error(`Data source ${dataSourceName} not found:`, dsError);
         return false;
       }
 
       const today = new Date().toISOString().split('T')[0];
 
       // Upsert metrics
-      const { error } = await supabase
+      const { error } = await supabase!
         .from('data_quality_metrics')
         .upsert({
           data_source_id: dataSource.id,
@@ -334,8 +371,13 @@ export class SupabaseService {
 
   // Get data quality summary
   static async getDataQualitySummary(): Promise<DataQualityMetric[]> {
+    if (!this.isAvailable()) {
+      console.warn('Supabase not available - returning empty metrics');
+      return [];
+    }
+
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from('data_quality_metrics')
         .select(`
           *,
@@ -363,8 +405,13 @@ export class SupabaseService {
     toDate: string,
     dataSourceName?: string
   ): Promise<StockQuote[]> {
+    if (!this.isAvailable()) {
+      console.warn('Supabase not available - returning empty historical data');
+      return [];
+    }
+
     try {
-      let query = supabase
+      let query = supabase!
         .from('stock_quotes')
         .select(`
           *,
@@ -395,14 +442,23 @@ export class SupabaseService {
 
   // Check if data is mock/simulated
   static async isDataMocked(symbol: string): Promise<boolean> {
+    if (!this.isAvailable()) {
+      return false;
+    }
+
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase!
         .from('stock_quotes')
         .select('is_mock')
         .eq('symbol', symbol)
         .order('quote_timestamp', { ascending: false })
         .limit(1)
         .single();
+
+      if (error) {
+        console.error('Error checking if data is mocked:', error);
+        return false;
+      }
 
       return data?.is_mock || false;
     } catch (error) {
